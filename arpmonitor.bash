@@ -13,25 +13,14 @@ arp-scan -I bge0 --rtt --format='|${ip;-15}|${mac}|${rtt;8}|' 192.30.177.0/24 > 
 #
 IFS=$'\n' read -d '' -r -a initiallines < $initialarp
 
-## Debug purpeses, see all the lines
-#
-#echo "${lines[@]}"
-
-printf "line 1: %s\n" "${initiallines[0]}"
-printf "line 5: %s\n" "${initiallines[4]}"
 
 count=0
 for initialline in "${initiallines[@]}"
 do
    # do whatever on "$initialline" here
-   echo $initialline
+   #echo $initialline
    IFS='|' read -ra INITIALADDR <<< "$initialline"
 
-#     for i in "${INITIALADDR[@]}"; do
-#       # process "$i"
-#       echo $i
-#  done
-#   echo "${ADDR[0]}"
    echo "IP:  ${INITIALADDR[1]}"
    echo "Mac: ${INITIALADDR[2]}"
    echo "$count"
