@@ -4,6 +4,8 @@
 #
 initialarp="/usr/local/bin/initialarp.dat"
 chkarp="/usr/local/bin/arpscanning.dat"
+armonitorplog="/var/log/arpmonitor.log"
+LANinterface="bge0"
 
 ## What is the percentage that should be reachable on IP adresses?
 #
@@ -13,9 +15,11 @@ minpercentage=70
 #
 macdifferent=0
 
+echo "Start the Arp Monitor routine, first do a initial arp-scan" > armonitorplog
+
 ## Get the initial Mac adresses of the network (Only Once and save it)
 #
-arp-scan -I bge0 --rtt --format='|${ip;-15}|${mac}|${rtt;8}|' 192.30.177.0/24 > $initialarp
+arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|${rtt;8}|' 192.30.177.0/24 > $initialarp
 
 ## Insert the arp initial file into an array, and break each line with WhiteSpace
 #
@@ -44,7 +48,7 @@ done
 #
 sleep 1
 
-arp-scan -I bge0 --rtt --format='|${ip;-15}|${mac}|${rtt;8}|' 192.30.177.0/24 > $chkarp
+arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|${rtt;8}|' 192.30.177.0/24 > $chkarp
 
 ## Insert the arp file into an array, and break each line with WhiteSpace
 #
@@ -54,8 +58,14 @@ IFS=$'\n' read -d '' -r -a chklines < $chkarp
 #
 #echo "${lines[@]}"
 
-printf "line 1: %s\n" "${chklines[0]}"
-printf "line 5: %s\n" "${chklines[4]}"
+#printf "line 1: %s\n" "${chklines[0]}"
+#printf "line 5: %s\n" "${chklines[4]}"
+
+## Loop through the lines of interval arp-scan so we can see if the ip adresses and mac adresses still match
+#
+let countmacok=0
+let countmactotal=0
+let countmacfault=0
 
 for chkline in "${chklines[@]}"
 do
@@ -85,11 +95,17 @@ do
          initMac=${InitialMac[$tellen]}
          if [ "$chkMac" = "$initMac" ]; then
            echo "Mac adress: $chkMac is the same as: $initMac"
+           countmacok=$((countmacok + 1))
          else
            echo "Mac adress: $chkMac is different: $initMac"
+           countmacfault=$((countmacfault + 1))
          fi
+         countmactotal=$((countmactotal + 1))
        fi
        let tellen=tellen+1
      done
   fi
 done
+
+echo "CountMac Total: $countmactotal"
+echo "CountMac OK: $countmacok"
