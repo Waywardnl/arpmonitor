@@ -28,6 +28,8 @@ IFS=$'\n' read -d '' -r -a initiallines < $initialarp
 echo "Loop through each line of initial arp-scan" >> $armonitorplog
 
 count=0
+countfilledlines=0
+
 for initialline in "${initiallines[@]}"
 do
    # do whatever on "$initialline" here
@@ -35,10 +37,18 @@ do
    IFS='|' read -ra INITIALADDR <<< "$initialline"
 
    echo "initial IP:  ${INITIALADDR[1]} - count: $count" >> $armonitorplog
-   echo "nitial Mac: ${INITIALADDR[2]} - count: $count" >> $armonitorplog
+   echo "initial Mac: ${INITIALADDR[2]} - count: $count" >> $armonitorplog
 
    InitialIP[$count]=${INITIALADDR[1]}
    InitialMac[$count]=${INITIALADDR[2]}
+   fullempty=${INITIALADDR[1]}
+
+   if [ "$fullempty" != "" ]; then
+      ## Only count the filled lines
+      #
+      countfilledlines=$((countfilledlines + 1))
+      echo "Filled InitialIP counted: ${InitialIP[$count]} - ${InitialMac[$count]}" >> $armonitorplog
+   fi
 
    #echo "Initial IP: ${InitialIP[$count]}"
    #echo "Initial Mac: ${InitialMac[$count]}"
@@ -70,7 +80,7 @@ let countmacfault=0
 for chkline in "${chklines[@]}"
 do
    # do whatever on "$chkline" here
-   echo $chkline
+   echo $chkline >> $armonitorplog
    IFS='|' read -ra CHKADDR <<< "$chkline"
 
    chkIP=${CHKADDR[1]}
@@ -108,3 +118,10 @@ done
 echo "CountMac Total: $countmactotal"
 echo "CountMac OK: $countmacok"
 echo "CountMac Fault: $countmacfault"
+echo "Count Filled Lines: $countfilledlines"
+
+echo "CountMac Total: $countmactotal" >> $armonitorplog
+echo "CountMac OK: $countmacok" >> $armonitorplog
+echo "CountMac Fault: $countmacfault" >> $armonitorplog
+echo "Count Filled Lines: $countfilledlines" >> $armonitorplog
+
