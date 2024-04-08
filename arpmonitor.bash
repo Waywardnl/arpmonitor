@@ -69,15 +69,27 @@ do
    echo $chkIP
    echo $chkMac
 
-   ## Check the IP adresses and Mac adresses with the initial Arp-scan
-   #
-   let tellen=0
-   while [ $tellen -lt $count ]; do
-     #echo "Checking IP and Mac against original IP and Mac $tellen (${chkIP} : ${InitialIP[$tellen]} / ${chkMac} : ${InitialMac[$tellen]} "
-     initIP=${InitialIP[$tellen]}
-     if [ "$chkIP" = "$initIP" ]; then
-       echo "found $chkIP"
-     fi
-     let tellen=tellen+1
-   done
+   if [ "$chkIP" != "" ]; then
+     ## Check the IP adresses and Mac adresses with the initial Arp-scan
+     #
+     let tellen=0
+     while [ $tellen -lt $count ]; do
+       #echo "Checking IP and Mac against original IP and Mac $tellen (${chkIP} : ${InitialIP[$tellen]} / ${chkMac} : ${InitialMac[$tellen]} "
+
+       ## Yes you dumb fuck, for filling a string in Bash, you dont enter $ in front of it!
+       #
+       initIP=${InitialIP[$tellen]}
+
+       if [ "$chkIP" = "$initIP" ]; then
+         echo "found $chkIP - $initIP - Checking if Mac adress is correct...."
+         initMac=${InitialMac[$tellen]}
+         if [ "$chkMac" = "$initMac" ]; then
+           echo "Mac adress: $chkMac is the same as: $initMac"
+         else
+           echo "Mac adress: $chkMac is different: $initMac"
+         fi
+       fi
+       let tellen=tellen+1
+     done
+  fi
 done
