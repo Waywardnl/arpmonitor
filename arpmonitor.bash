@@ -5,6 +5,14 @@
 initialarp="/usr/local/bin/initialarp.dat"
 chkarp="/usr/local/bin/arpscanning.dat"
 
+## What is the percentage that should be reachable on IP adresses?
+#
+minpercentage=70
+
+## Can Mac adresses be different? (0=No / 1 = Yes)
+#
+macdifferent=0
+
 ## Get the initial Mac adresses of the network (Only Once and save it)
 #
 arp-scan -I bge0 --rtt --format='|${ip;-15}|${mac}|${rtt;8}|' 192.30.177.0/24 > $initialarp
@@ -32,14 +40,11 @@ do
    count=$((count + 1))
 done
 
+## Sleep before doing checkups
+#
 sleep 1
 
 arp-scan -I bge0 --rtt --format='|${ip;-15}|${mac}|${rtt;8}|' 192.30.177.0/24 > $chkarp
-
-#while IFS= read -r line
-#do
-#  echo "$line"
-#done < "$chkarp"
 
 ## Insert the arp file into an array, and break each line with WhiteSpace
 #
@@ -58,11 +63,6 @@ do
    echo $chkline
    IFS='|' read -ra CHKADDR <<< "$chkline"
 
-#     for i in "${ADDR[@]}"; do
-#       # process "$i"
-#       echo $i
-#  done
-#   echo "${ADDR[0]}"
    echo "${CHKADDR[1]}"
    echo "${CHKADDR[2]}"
 done
