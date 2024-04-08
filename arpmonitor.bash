@@ -15,7 +15,7 @@ minpercentage=70
 #
 macdifferent=0
 
-echo "Start the Arp Monitor routine, first do a initial arp-scan" > armonitorplog
+echo "Start the Arp Monitor routine, first do a initial arp-scan" > $armonitorplog
 
 ## Get the initial Mac adresses of the network (Only Once and save it)
 #
@@ -25,6 +25,7 @@ arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|${rtt;8}|' 192.30.17
 #
 IFS=$'\n' read -d '' -r -a initiallines < $initialarp
 
+echo "Loop through each line of initial arp-scan" >> $armonitorplog
 
 count=0
 for initialline in "${initiallines[@]}"
@@ -33,19 +34,21 @@ do
    #echo $initialline
    IFS='|' read -ra INITIALADDR <<< "$initialline"
 
-   echo "IP:  ${INITIALADDR[1]}"
-   echo "Mac: ${INITIALADDR[2]}"
-   echo "$count"
+   echo "initial IP:  ${INITIALADDR[1]} - count: $count" >> $armonitorplog
+   echo "nitial Mac: ${INITIALADDR[2]} - count: $count" >> $armonitorplog
+
    InitialIP[$count]=${INITIALADDR[1]}
    InitialMac[$count]=${INITIALADDR[2]}
 
-   echo "Initial IP: ${InitialIP[$count]}"
-   echo "Initial Mac: ${InitialMac[$count]}"
+   #echo "Initial IP: ${InitialIP[$count]}"
+   #echo "Initial Mac: ${InitialMac[$count]}"
+
    count=$((count + 1))
 done
 
 ## Sleep before doing checkups
 #
+echo "Sleeping before interval checking...." >> $armonitorplog
 sleep 1
 
 arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|${rtt;8}|' 192.30.177.0/24 > $chkarp
@@ -57,9 +60,6 @@ IFS=$'\n' read -d '' -r -a chklines < $chkarp
 ## Debug purpeses, see all the lines
 #
 #echo "${lines[@]}"
-
-#printf "line 1: %s\n" "${chklines[0]}"
-#printf "line 5: %s\n" "${chklines[4]}"
 
 ## Loop through the lines of interval arp-scan so we can see if the ip adresses and mac adresses still match
 #
@@ -76,28 +76,26 @@ do
    chkIP=${CHKADDR[1]}
    chkMac=${CHKADDR[2]}
 
-   echo $chkIP
-   echo $chkMac
+   #echo $chkIP
+   #echo $chkMac
 
    if [ "$chkIP" != "" ]; then
      ## Check the IP adresses and Mac adresses with the initial Arp-scan
      #
      let tellen=0
      while [ $tellen -lt $count ]; do
-       #echo "Checking IP and Mac against original IP and Mac $tellen (${chkIP} : ${InitialIP[$tellen]} / ${chkMac} : ${InitialMac[$tellen]} "
+       echo "Checking IP and Mac against original IP and Mac $tellen (${chkIP} : ${InitialIP[$tellen]} / ${chkMac} : ${InitialMac[$tellen]} " >> $armonitorplog
 
-       ## Yes you dumb fuck, for filling a string in Bash, you dont enter $ in front of it!
-       #
        initIP=${InitialIP[$tellen]}
 
        if [ "$chkIP" = "$initIP" ]; then
-         echo "found $chkIP - $initIP - Checking if Mac adress is correct...."
+         echo "found $chkIP - $initIP - Checking if Mac adress is correct...." >> $armonitorplog
          initMac=${InitialMac[$tellen]}
          if [ "$chkMac" = "$initMac" ]; then
-           echo "Mac adress: $chkMac is the same as: $initMac"
+           echo "Mac adress: $chkMac is the same as: $initMac" >> $armonitorplog
            countmacok=$((countmacok + 1))
          else
-           echo "Mac adress: $chkMac is different: $initMac"
+           echo "Mac adress: $chkMac is different: $initMac" >> $armonitorplog
            countmacfault=$((countmacfault + 1))
          fi
          countmactotal=$((countmactotal + 1))
@@ -109,3 +107,4 @@ done
 
 echo "CountMac Total: $countmactotal"
 echo "CountMac OK: $countmacok"
+echo "CountMac Fault: $countmacfault"
