@@ -17,6 +17,9 @@ minpercentage=70
 #
 macdifferent=0
 
+## if yes, how many percent?
+macdiffpercent=80
+
 echo "Start the Arp Monitor routine, first do a initial arp-scan" > $armonitorlog
 
 ## Get the initial Mac adresses of the network (Only Once and save it)
@@ -67,6 +70,7 @@ do
   count=$((count + 1))
   #sleep 1
 done
+initialcount=$count
 
 echo "Loop through each line of initial arp-scan" >> $armonitorlog
 
@@ -203,6 +207,7 @@ do
   fi
 done
 
+echo "Initial ARP count with duplicates: $initialcount"
 echo "CountMac Total: $countmactotal"
 echo "CountMac OK: $countmacok"
 echo "CountMac Fault: $countmacfault"
@@ -210,6 +215,7 @@ echo "Count Filled Lines: $countfilledlines"
 echo "Initial Duplicate lines found: $initialduplicates"
 echo "Re-accuring Duplicates found: $chkduplicates"
 
+echo "Initial ARP count with duplicates: $initialcount" >> $armonitorlog
 echo "CountMac Total: $countmactotal" >> $armonitorlog
 echo "CountMac OK: $countmacok" >> $armonitorlog
 echo "CountMac Fault: $countmacfault" >> $armonitorlog
@@ -217,14 +223,50 @@ echo "Count Filled Lines: $countfilledlines" >> $armonitorlog
 echo "Initial Duplicate lines found: $initialduplicates" >> $armonitorlog
 echo "Re-accuring Duplicates found: $chkduplicates" >> $armonitorlog
 
-## Since Bash cannopt to double integers, we need todo some trickery for percentage
-#
-#percent=$((200*$countmacok/$total % 2 + 100*$countfilledlines/$total))
-#percent=$(( 100 * countmacok / total + (1000 * countmacok / countfilledlines % 10 >= 5 ? 1 : 0) ))
-
-#echo "Percentage: $percent "
-#echo $((200 * ($countfilledlines/$countmacok)))
 howmanyprocent=$((100*$countmacok/$countfilledlines))
 echo "How many percent is missing from the initial arp-scan: $howmanyprocent"
 echo "How many percent is missing from the initial arp-scan: $howmanyprocent" >> $armonitorlog
 
+## Check if the percentage is less than the minimum percentage, if it is less take action.
+#
+let takeaction=0
+if [ $howmanyprocent -lt $minpercentage ]; then
+  ## Less than the minimal percentage is there, take action!
+  echo "The found ip adres percentage: $howmanyprocent is lower than $minpercentage, take action!" >> $armonitorlog
+  let takeaction=1
+else
+  ## Within percentage, all is ok!
+  echo "The found ip adres percentage: $howmanyprocent is higher than $minpercentage, all is well!" >> $armonitorlog
+  takeaction=0
+fi
+
+## Check if an mac adress may change
+#
+if [ $macdifferent -eq 0 ]; then
+  ## All mac adresses must be the same on the same ip adressses
+  echo "All Mac adresses MUST be the same, check if there are faulty MAc adresses" >> $armonitorlog
+  if [ $countmacfault -gt 0 ]; then
+    ## There is a problem, an mac adress is different
+    echo "Number of faulty mac adresses: $countmacfault, None is the Rule, take action!" >> $armonitorlog
+    let takeaction=1
+  else
+    echo "All Mac adresses are the same as the initial readout by arp-scan" >> $armonitorlog
+  fi
+else
+  ## Yes there may be a difference, but how many percent?
+  ## $macdiffpercent
+  #
+  echo "Not all Mac adresses in the network have to be exactly the same, a minimal percentage is given: $diffprocent" >> $armonitorlog
+  diffprocent=$((100*$countmacok/$countmactotal))
+  if [ $diffprocent -lt $macdiffpercent]; then
+    ## Less than the minimal percentage is there, take action!
+    echo "The Mac pass percentage: $macdiffpercent is lower than $diffprocent, take action!" >> $armonitorlog
+    let takeaction=1
+  else
+    ## Within percentage, all is ok!
+    echo "The Mac pass percentage: $howmanyprocent is higher than $minpercentage, all is well!" >> $armonitorlog
+    let takeaction=0
+  fi
+fi
+
+echo "Do we need to take action? : $takeaction"
