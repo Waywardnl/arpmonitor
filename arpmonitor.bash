@@ -3,6 +3,7 @@
 ## Define Initial ARP result file
 #
 initialarp="/usr/local/bin/initialarp.dat"
+initialdedup="/usr/local/bin/initialarpdedup.dat"
 chkarp="/usr/local/bin/arpscanning.dat"
 armonitorlog="/var/log/arpmonitor.log"
 LANinterface="bge0"
@@ -19,13 +20,54 @@ echo "Start the Arp Monitor routine, first do a initial arp-scan" > $armonitorlo
 
 ## Get the initial Mac adresses of the network (Only Once and save it)
 #
-arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|${rtt;8}|' 192.30.177.0/24 > $initialarp
+arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|' 192.30.177.0/24 > $initialarp
+
+#arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|' 192.30.177.0/24 | awk '/([a-f0-9]{2}:){5}[a-f0-9]{2}/&&!seen[$1]++{print $1}' > $initialarp
 
 ## Insert the arp initial file into an array, and break each line with WhiteSpace
 #
 IFS=$'\n' read -d '' -r -a initiallines < $initialarp
 
+## Remove the double entry's
+#
+count=0
+duplicates=0
+echo "## Deduplication of initial Arp-scan results" > $initialdedup
+for initialline in "${initiallines[@]}"
+do
+  dedup[$count]=$initialline
+
+  let tellen=0
+  let found=0
+  while [ $tellen -lt $count ]; do
+    remember=${dedup[$tellen]}
+
+    ## Debug purposes
+    #
+    #echo "Remember: $remember --> $initialline --> $tellen"
+
+    if [ "$remember" = "$initialline" ]; then
+      let found=1
+      echo "## Found a duplicate line: $initialline #########################" >> $armonitorlog
+    fi
+    let tellen=tellen+1
+  done
+  if (( $found == 0 )) ; then
+    ## Save this line it is unique
+    #
+    echo $initialline >> $initialdedup
+  else
+    ## Count the duplicates
+    #
+    duplicates=$((duplicates + 1))
+  fi
+  count=$((count + 1))
+  #sleep 1
+done
+
 echo "Loop through each line of initial arp-scan" >> $armonitorlog
+
+IFS=$'\n' read -d '' -r -a initiallines < $initialdedup
 
 count=0
 countfilledlines=0
@@ -61,7 +103,7 @@ done
 echo "Sleeping before interval checking...." >> $armonitorlog
 sleep 1
 
-arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|${rtt;8}|' 192.30.177.0/24 > $chkarp
+arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|' 192.30.177.0/24 > $chkarp
 
 ## Insert the arp file into an array, and break each line with WhiteSpace
 #
@@ -121,9 +163,18 @@ echo "CountMac Total: $countmactotal"
 echo "CountMac OK: $countmacok"
 echo "CountMac Fault: $countmacfault"
 echo "Count Filled Lines: $countfilledlines"
+echo "Duplicate lines found: $duplicates"
 
 echo "CountMac Total: $countmactotal" >> $armonitorlog
 echo "CountMac OK: $countmacok" >> $armonitorlog
 echo "CountMac Fault: $countmacfault" >> $armonitorlog
 echo "Count Filled Lines: $countfilledlines" >> $armonitorlog
+echo "Duplicate lines found: $duplicates" >> $armonitorlog
 
+## Since Bash cannopt to double integers, we need todo some trickery for percentage
+#
+#percent=$((200*$countmacok/$total % 2 + 100*$countfilledlines/$total))
+#percent=$(( 100 * countmacok / total + (1000 * countmacok / countfilledlines % 10 >= 5 ? 1 : 0) ))
+
+#echo "Percentage: $percent "
+echo $((200 * $countfilledlines/$countmacok))
