@@ -5,6 +5,7 @@
 initialarp="/usr/local/bin/initialarp.dat"
 initialdedup="/usr/local/bin/initialarpdedup.dat"
 chkarp="/usr/local/bin/arpscanning.dat"
+chkdeduparp="/usr/local/bin/arpdedupscanning.dat"
 armonitorlog="/var/log/arpmonitor.log"
 LANinterface="bge0"
 
@@ -24,6 +25,8 @@ arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|' 192.30.177.0/24 > 
 
 #arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|' 192.30.177.0/24 | awk '/([a-f0-9]{2}:){5}[a-f0-9]{2}/&&!seen[$1]++{print $1}' > $initialarp
 
+echo "Remove the possible double entry;s from the initial ARP Scan" > $armonitorlog
+
 ## Insert the arp initial file into an array, and break each line with WhiteSpace
 #
 IFS=$'\n' read -d '' -r -a initiallines < $initialarp
@@ -31,7 +34,7 @@ IFS=$'\n' read -d '' -r -a initiallines < $initialarp
 ## Remove the double entry's
 #
 count=0
-duplicates=0
+initialduplicates=0
 echo "## Deduplication of initial Arp-scan results" > $initialdedup
 for initialline in "${initiallines[@]}"
 do
@@ -59,7 +62,7 @@ do
   else
     ## Count the duplicates
     #
-    duplicates=$((duplicates + 1))
+    initialduplicates=$((initialduplicates + 1))
   fi
   count=$((count + 1))
   #sleep 1
@@ -108,6 +111,47 @@ arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|' 192.30.177.0/24 > 
 ## Insert the arp file into an array, and break each line with WhiteSpace
 #
 IFS=$'\n' read -d '' -r -a chklines < $chkarp
+
+## Remove the double entry's
+#
+count=0
+chkduplicates=0
+echo "## Deduplication of Returning Arp-scan results" > $chkdeduparp
+for chkline in "${chklines[@]}"
+do
+  chkdedup[$count]=$chkline
+
+  let tellen=0
+  let found=0
+  while [ $tellen -lt $count ]; do
+    remember=${chkdedup[$tellen]}
+
+    ## Debug purposes
+    #
+    #echo "Remember: $remember --> $initialline --> $tellen"
+
+    if [ "$remember" = "$chkline" ]; then
+      let found=1
+      echo "## Found a duplicate line: $chkline #########################" >> $armonitorlog
+    fi
+    let tellen=tellen+1
+  done
+  if (( $found == 0 )) ; then
+    ## Save this line it is unique
+    #
+    echo $chkline >> $chkdeduparp
+  else
+    ## Count the duplicates
+    #
+    chkduplicates=$((chkduplicates + 1))
+  fi
+  count=$((count + 1))
+  #sleep 1
+done
+
+## Read the deduplicated file
+#
+IFS=$'\n' read -d '' -r -a chklines < $chkdeduparp
 
 ## Debug purpeses, see all the lines
 #
@@ -163,13 +207,13 @@ echo "CountMac Total: $countmactotal"
 echo "CountMac OK: $countmacok"
 echo "CountMac Fault: $countmacfault"
 echo "Count Filled Lines: $countfilledlines"
-echo "Duplicate lines found: $duplicates"
+echo "Initial Duplicate lines found: $duplicates"
 
 echo "CountMac Total: $countmactotal" >> $armonitorlog
 echo "CountMac OK: $countmacok" >> $armonitorlog
 echo "CountMac Fault: $countmacfault" >> $armonitorlog
 echo "Count Filled Lines: $countfilledlines" >> $armonitorlog
-echo "Duplicate lines found: $duplicates" >> $armonitorlog
+echo "Initial Duplicate lines found: $duplicates" >> $armonitorlog
 
 ## Since Bash cannopt to double integers, we need todo some trickery for percentage
 #
