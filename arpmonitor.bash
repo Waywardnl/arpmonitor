@@ -207,13 +207,15 @@ echo "CountMac Total: $countmactotal"
 echo "CountMac OK: $countmacok"
 echo "CountMac Fault: $countmacfault"
 echo "Count Filled Lines: $countfilledlines"
-echo "Initial Duplicate lines found: $duplicates"
+echo "Initial Duplicate lines found: $initialduplicates"
+echo "Re-accuring Duplicates found: $chkduplicates"
 
 echo "CountMac Total: $countmactotal" >> $armonitorlog
 echo "CountMac OK: $countmacok" >> $armonitorlog
 echo "CountMac Fault: $countmacfault" >> $armonitorlog
 echo "Count Filled Lines: $countfilledlines" >> $armonitorlog
-echo "Initial Duplicate lines found: $duplicates" >> $armonitorlog
+echo "Initial Duplicate lines found: $initialduplicates" >> $armonitorlog
+echo "Re-accuring Duplicates found: $chkduplicates" >> $armonitorlog
 
 ## Since Bash cannopt to double integers, we need todo some trickery for percentage
 #
@@ -221,4 +223,8 @@ echo "Initial Duplicate lines found: $duplicates" >> $armonitorlog
 #percent=$(( 100 * countmacok / total + (1000 * countmacok / countfilledlines % 10 >= 5 ? 1 : 0) ))
 
 #echo "Percentage: $percent "
-echo $((200 * $countfilledlines/$countmacok))
+#echo $((200 * ($countfilledlines/$countmacok)))
+howmanyprocent=$((100*$countmacok/$countfilledlines))
+echo "How many percent is missing from the initial arp-scan: $howmanyprocent"
+echo "How many percent is missing from the initial arp-scan: $howmanyprocent" >> $armonitorlog
+
