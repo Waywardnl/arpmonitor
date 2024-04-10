@@ -26,7 +26,7 @@ echo "Start the Arp Monitor routine, first do a initial arp-scan" > $armonitorlo
 #
 arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|' 192.30.177.0/24 > $initialarp
 
-#arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|' 192.30.177.0/24 | awk '/([a-f0-9]{2}:){5}[a-f0-9]{2}/&&!seen[$1]++{print $1}' > $initialarp
+#arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|' 192.30.177.0/24 | awk '/([a-f0-9]{2}:){5}[a-f0-9]{2}/&&!s                                                                      een[$1]++{print $1}' > $initialarp
 
 echo "Remove the possible double entry;s from the initial ARP Scan" > $armonitorlog
 
@@ -186,7 +186,7 @@ do
      while [ $tellen -lt $count ]; do
        ## Little less logging may be done
        #
-       #echo "Checking IP and Mac against original IP and Mac $tellen (${chkIP} : ${InitialIP[$tellen]} / ${chkMac} : ${InitialMac[$tellen]} " >> $armonitorlog
+       #echo "Checking IP and Mac against original IP and Mac $tellen (${chkIP} : ${InitialIP[$tellen]} / ${chkMac} : ${                                                                      InitialMac[$tellen]} " >> $armonitorlog
 
        initIP=${InitialIP[$tellen]}
 
@@ -256,7 +256,7 @@ else
   ## Yes there may be a difference, but how many percent?
   ## $macdiffpercent
   #
-  echo "Not all Mac adresses in the network have to be exactly the same, a minimal percentage is given: $diffprocent" >> $armonitorlog
+  echo "Not all Mac adresses in the network have to be exactly the same, a minimal percentage is given: $diffprocent" >>                                                                       $armonitorlog
   diffprocent=$((100*$countmacok/$countmactotal))
   if [ $diffprocent -lt $macdiffpercent]; then
     ## Less than the minimal percentage is there, take action!
