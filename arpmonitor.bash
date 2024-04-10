@@ -9,13 +9,13 @@ chkdeduparp="/home/USB/Data/arpdedupscanning.dat"
 armonitorlog="/home/USB/Log/arpmonitor.log"
 LANinterface="bge0"
 
-## How long do we sleep before doing the next check
+## How long do we sleep before doing the next check (in seconds)
 ## 3600 = 1 hour / 7200 = 2 hours
 #
 Interval=1
 
 ## Debug level
-## 0 = None / 1 = Basic / 2 = a Lot!
+## 0 = None / 1 = Basic / 2 = Averige / 3 = A lot (Keep those MBs coming!)
 #
 DebugLevel=1
 
@@ -28,7 +28,12 @@ minpercentage=90
 macdifferent=0
 
 ## if yes, how many percent?
+#
 macdiffpercent=80
+
+## How much time do we give for the machine to gracefully Shutdown? (in seconds)
+#
+gracefultime=600
 
 if (( DebugLevel > 0 )); then
   echo "Start the Arp Monitor routine, first do a initial arp-scan" > $armonitorlog
@@ -201,7 +206,12 @@ let countmacfault=0
 for chkline in "${chklines[@]}"
 do
    # do whatever on "$chkline" here
-   echo $chkline >> $armonitorlog
+   if (( DebugLevel > 2 )); then
+     echo $chkline >> $armonitorlog
+   fi
+
+   ## Split the string with delimiter P|pe from string $chkline
+   #
    IFS='|' read -ra CHKADDR <<< "$chkline"
 
    chkIP=${CHKADDR[1]}
@@ -337,6 +347,59 @@ else
 fi
 
 echo "Do we need to take action (0 = No / 1 = Yes)? : $takeaction"
-if (( DebugLevel > 0 )); then
-  echo "Do we need to take action (0 = No / 1 = Yes)? : $takeaction" >> $armonitorlog
+if (( takeaction > 0 )); then
+  if (( DebugLevel > 0 )); then
+    echo "Do we need to take action (0 = No / 1 = Yes)? : $takeaction --> Yes! we need to take action!" >> $armonitorlog
+  fi
+
+  ## Fill a string to see if there are running Vm's
+  #
+  RunningVMs=$(VBoxManage list runningvms)
+  if (( DebugLevel > 0 )); then
+    echo "Found the following machijnes running: $RunningVMs" >> $armonitorlog
+  fi
+  if [ "$RunningVMs" != "" ]; then
+    ## Yes the VM for this user is running, make it shutdown gracefully
+    #
+    ## First get the machine name the smart way (From the string), we need to split the string on a [space]
+    #
+    IFS=' ' read -ra VMNAME <<< "$RunningVMs"
+    VboxName=${VMNAME[0]}
+
+    if (( DebugLevel > 1 )); then
+      echo "Virtual Machine name found: $VboxName"
+    fi
+    ## First get the machine name the smart way (From the string)
+    #
+    if (( DebugLevel > 1 )); then
+      echo "Pressing ACPI Powerbutton for Virtual Machine:  $VboxName to gracefully shutdown the machine" >> $armonitorlog
+    fi
+    ResultPWRButton=$(VBoxManage controlvm $VboxName acpipowerbutton)
+
+    if (( DebugLevel > 1 )); then
+      echo "Give time for the Virtual Machine:  $VboxName to gracefully shutdown, sleep for $gracefultime seconds" >> $armonitorlog
+      echo $ResultPWRButton >> $armonitorlog
+    fi
+    sleep $gracefultime
+
+    if (( DebugLevel > 1 )); then
+      echo "To be fully sure, poweroff the VM : $VboxName"
+    fi
+    ResultPowerOFF=$(VBoxManage controlvm $VboxName poweroff)
+  else
+    if (( DebugLevel > 0 )); then
+      echo "There are no Running VM's found, we do not need todo anything" >> $armonitorlog
+      echo $ResultPowerOFF >> $armonitorlog
+    fi
+  fi
+else
+  if (( DebugLevel > 0 )); then
+    echo "Do we need to take action (0 = No / 1 = Yes)? : $takeaction --> No, no action needed!" >> $armonitorlog
+  fi
+  ## Fill a string to see if there are running Vm's
+  #
+  RunningVMs=$(VBoxManage list runningvms)
+  if (( DebugLevel > 0 )); then
+    echo "Found the following machijnes running: $RunningVMs">> $armonitorlog
+  fi
 fi
