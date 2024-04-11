@@ -21,7 +21,7 @@ DebugLevel=1
 
 ## What is the percentage that should be reachable on IP adresses?
 #
-minpercentage=90
+minpercentage=95
 
 ## Can Mac adresses be different? (0=No / 1 = Yes)
 #
@@ -371,6 +371,7 @@ while [ $endless -lt $maxloops ]; do
                 #
                 IFS=' ' read -ra VMNAME <<< "$RunningVMs"
                 VboxName=${VMNAME[0]}
+                VboxName="${VboxName//\"}"
 
                 if (( DebugLevel > 1 )); then
                   echo "Virtual Machine name found: $VboxName"
@@ -392,10 +393,17 @@ while [ $endless -lt $maxloops ]; do
                   echo "To be fully sure, poweroff the VM : $VboxName"
                 fi
                 ResultPowerOFF=$(VBoxManage controlvm $VboxName poweroff)
+
+                ## Stop the endless routine for this machine, it does not run anymore
+                #
+                let endless=endless+1000
+                if (( DebugLevel > 1 )); then
+                  echo "VM has been shut down" >> $armonitorlog
+                  echo $ResultPowerOFF >> $armonitorlog
+                fi
           else
                 if (( DebugLevel > 0 )); then
                   echo "There are no Running VM's found, we do not need todo anything" >> $armonitorlog
-                  echo $ResultPowerOFF >> $armonitorlog
                 fi
           fi
         else
