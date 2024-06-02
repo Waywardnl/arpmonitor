@@ -1,13 +1,13 @@
 #!/usr/local/bin/bash
 
-while getopts i:d:c:u:m:l:v:d:p:f:t:g:o:h:r: flag
+while getopts i:e:c:u:m:l:v:d:p:f:t:g:o:h:r: flag
 do
     case "${flag}" in
         i) initialarp=${OPTARG};;
-        d) initialdedup=${OPTARG};;
+        e) initialdedup=${OPTARG};;
         c) chkarp=${OPTARG};;
         u) chkdeduparp=${OPTARG};;
-        m) $arpmonitorlog=${OPTARG};;
+        m) arpmonitorlog=${OPTARG};;
         l) LANinterface=${OPTARG};;
         v) Interval=${OPTARG};;
         d) DebugLevel=${OPTARG};;
@@ -20,6 +20,11 @@ do
         r) iprange=${OPTARG};;
     esac
 done
+
+#echo "Initialarp: $initialarp";
+#echo "Aprmonitorlog: $arpmonitorlog";
+
+#exit;
 
 # Test an IP address for validity:
 # Usage:
@@ -82,7 +87,7 @@ else
     parametererror+="[Error] initialarp (-i) is not filled in, This is needed for a location for the file of the initialarp scan.%%break%%"
   fi
   if [ "$initialdedup" = "" ]; then
-    parametererror+="[Error] initialdedup (-d) is not filled in, This is needed to place the file with unique entry's by arp-scan.%%break%%"
+    parametererror+="[Error] initialdedup (-e) is not filled in, This is needed to place the file with unique entry's by arp-scan.%%break%%"
   fi
   if [ "$chkarp" = "" ]; then
     parametererror+="[Error]chkarp (-c) is not filled in, This is needed to place the interval arp-scans file.%%break%%"
@@ -90,6 +95,7 @@ else
   if [ "$chkdeduparp" = "" ]; then
     parametererror+="[Error]chkdeduparp (-u) is not filled in, This is needed to place the interval arp-scans file.%%break%%"
   fi
+  echo "Aprmonitorlog: $arpmonitorlog";
   if [ "$arpmonitorlog" = "" ]; then
     parametererror+="[Error]$arpmonitorlog (-m) is not filled in, This is needed to place the interval arp-scans file.%%break%%"
   fi
@@ -104,6 +110,7 @@ fi
 ## Debug level
 ## 0 = None / 1 = Basic / 2 = Averige / 3 = A lot (Keep those MBs coming!)
 #
+echo "Debuglevel: $DebugLevel";
 if ! [[ "$DebugLevel" =~ ^[0-9]+$ ]]; then
   parameterwarning+="DebugLevel (-d) can only contain number (0:None,1:Basic,2: Some More, 3:Extensive) - This parameter gives you control on how much logging must be done. Assuming default logging: .%%break%%"
   DebugLevel=1
@@ -294,14 +301,14 @@ if [ "$parametererror" != "" ]; then
   echo "Parameter errors or parameters missing! Explenation:"
   echo ""
   echo "-h : Homedir       --> This means you will be using the script under a particular user."
-  echo "                       The parameters: -i -c -u -d -m will be filled in automaticly with /home/USER/...."
+  echo "                       The parameters: -i -c -u -e -m will be filled in automaticly with /home/USER/...."
   echo "-----------------------------------------------------------"
   echo "These parameters need to be filled in when (-h) Homedir is not used:"
   echo ""
   echo "-i: Initialarp     --> This is the file location of the initial arp-scan (With directory)."
   echo "-d: Initialdedup   --> This is the file location of the initial arp-scan (With directory)."
   echo "-c: ChkArp         --> This is the file location of the interval checks of arp-scan go (With directory)."
-  echo "-u: Chkdeduparp    --> This is the file location of the deduplicated file of the interval checks of arp-scan go (With directory)."
+  echo "-e: Chkdeduparp    --> This is the file location of the deduplicated file of the interval checks of arp-scan go (With directory)."
   echo "-m: Arpmonitorlog  --> This is the file location where the log file goes. (With directory)."
   echo "-----------------------------------------------------------"
   echo "These parameters always need to be filled in:"
@@ -424,7 +431,7 @@ while [ $endless -lt $maxloops ]; do
         ## Sleep before doing checkups
         #
         if (( DebugLevel > 0 )); then
-          echo "Sleeping $Interval before next interval check...." >> $arpmonitorlog
+          echo "Sleeping $iNTERVAL BEFORE NEXT INTERVAL CHECK...." >> $ARpmonitorlog
         fi
         sleep $Interval
 
