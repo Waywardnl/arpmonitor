@@ -24,7 +24,7 @@ done
 ## Debugging
 #
 #echo "Initialarp: $initialarp";
-#echo "Aprmonitorlog: $arpmonitorlog";
+#echo "Aprmonitorlog: ${arpmonitorlog}";
 #echo "IPRange: $iprange";
 
 #exit;
@@ -108,9 +108,9 @@ if [ "$homedir" = "Y" ] || [ "$homedir" = "YES" ] || [ "$homedir" = "JA" ] || [ 
   chkdeduparp+=$gebruiker
   chkdeduparp+="/Data/arpdedupscanning.dat"
 
-  $arpmonitorlog="/home/"
-  $arpmonitorlog+=$gebruiker
-  $arpmonitorlog+="/Log/arpmonitor.log"
+  ${arpmonitorlog}="/home/"
+  ${arpmonitorlog}+=$gebruiker
+  ${arpmonitorlog}+="/Log/arpmonitor.log"
 else
   ## Define Initial ARP result file
   #
@@ -126,9 +126,9 @@ else
   if [ "$chkdeduparp" = "" ]; then
     parametererror+="[Error]chkdeduparp (-u) is not filled in, This is needed to place the interval arp-scans file.%%break%%"
   fi
-  echo "Aprmonitorlog: $arpmonitorlog";
-  if [ "$arpmonitorlog" = "" ]; then
-    parametererror+="[Error]$arpmonitorlog (-m) is not filled in, This is needed to place the interval arp-scans file.%%break%%"
+  echo "Aprmonitorlog: ${arpmonitorlog}";
+  if [ "${arpmonitorlog}" = "" ]; then
+    parametererror+="[Error]${arpmonitorlog} (-m) is not filled in, This is needed to place the interval arp-scans file.%%break%%"
   fi
   if [ "$parametererror" = "" ]; then
     parameterTIP+="If you are running this script under a particular user, you can use homedir (-h yes) to let the file location fill in automaticl.%%break%%"
@@ -141,7 +141,7 @@ fi
 ## Debug level
 ## 0 = None / 1 = Basic / 2 = Averige / 3 = A lot (Keep those MBs coming!)
 #
-echo "Debuglevel: $DebugLevel";
+echo "Debuglevel: ${DebugLevel}";
 if ! [[ "$DebugLevel" =~ ^[0-9]+$ ]]; then
   parameterwarning+="DebugLevel (-d) can only contain number (0:None,1:Basic,2: Some More, 3:Extensive) - This parameter gives you control on how much logging must be done. Assuming default logging: .%%break%%"
   DebugLevel=1
@@ -157,13 +157,13 @@ if ! [[ "$Interval" =~ ^[0-9]+$ ]]; then
   parameterwarning+="[Warning]Interval (-v) can only contain numbers. Here you can specify how long the loop must wait before doing another arp scan. Assuming default: 7200 seconds (2 Hours.%%break%%"
   Interval=7200
   if (( DebugLevel > 0 )); then
-    echo "[Warning] Interval (-v) can only contain numbers. Here you can specify how long the loop must wait before doing another arp scan. Assuming default: 7200 seconds (2 Hours)" >> $arpmonitorlog
+    echo "[Warning] Interval (-v) can only contain numbers. Here you can specify how long the loop must wait before doing another arp scan. Assuming default: 7200 seconds (2 Hours)" >> "${arpmonitorlog}"
   fi
 elif (( Interval < 300 )); then
   parameterwarning+="[Warning]Interval (-v) has a minimum of 300 seconds waiting time (5 minutes), Assuming the minimal value: 300 seconds.%%break%%"
   Interval=300
   if (( DebugLevel > 0 )); then
-    echo "[Warning]Interval (-v) has a minimum of 300 seconds waiting time (5 minutes), Assuming the minimal value: 300 seconds." >> $arpmonitorlog
+    echo "[Warning]Interval (-v) has a minimum of 300 seconds waiting time (5 minutes), Assuming the minimal value: 300 seconds." >> "${arpmonitorlog}"
   fi
 fi
 
@@ -172,13 +172,13 @@ fi
 if ! [[ "$minpercentage" =~ ^[0-9]+$ ]]; then
   parameterwarning+="minpercentage (-p) can only contain numbers between 1 and 100 (%percent%). This parameter gives you control when there is a too low percentage of IP adresses and Mac adresses changed. Assuming standard 70.%%break%%"
   if (( DebugLevel > 0 )); then
-    echo "[Warning]minpercentage (-p) can only contain numbers between 1 and 100 (%percent%). This parameter gives you control when there is a too low percentage of IP adresses and Mac adresses changed. Assuming standard 70%" >> $arpmonitorlog
+    echo "[Warning]minpercentage (-p) can only contain numbers between 1 and 100 (%percent%). This parameter gives you control when there is a too low percentage of IP adresses and Mac adresses changed. Assuming standard 70%" >> "${arpmonitorlog}"
   fi
   minpercentage=70
 elif (( minpercentage > 0 )) || (( minpercentage < 101 )); then
   parameterwarning+="minpercentage (-p) out of bounce! It can only contain numbers between 1 and 100 (%percent%). This parameter gives you control when there is a too low percentage of IP adresses and Mac adresses changed. Assuming standard 70.%%break%%"
   if (( DebugLevel > 0 )); then
-    echo "[Warning]minpercentage (-p) can only contain numbers between 1 and 100 (%percent%). This parameter gives you control when there is a too low percentage of IP adresses and Mac adresses changed. Assuming standard 70%" >> $arpmonitorlog
+    echo "[Warning]minpercentage (-p) can only contain numbers between 1 and 100 (%percent%). This parameter gives you control when there is a too low percentage of IP adresses and Mac adresses changed. Assuming standard 70%" >> "${arpmonitorlog}"
   fi
   minpercentage=70
 fi
@@ -189,13 +189,13 @@ macdifferent="${macdifferent^^}"
 
 if [ "$macdifferent" = "Y" ] || [ "$macdifferent" = "YES" ] || [ "$macdifferent" = "JA" ] || [ "$macdifferent" = "1" ]; then
   if (( DebugLevel > 0 )); then
-    echo "[Warning]User is ok with some Mac adresses to be different (-f). macdifferent=1 --> User also has to define percentage" >> $arpmonitorlog
+    echo "[Warning]User is ok with some Mac adresses to be different (-f). macdifferent=1 --> User also has to define percentage" >> "${arpmonitorlog}"
   fi
   macdifferent=1
   parameterwarning+="User is ok with some Mac adresses to be different (-f). Also define the percentag.%%break%%"
 else
   if (( DebugLevel > 0 )); then
-    echo "[Warning]No input or invalid input for macdifferent, assuming No (0) zero." >> $arpmonitorlog
+    echo "[Warning]No input or invalid input for macdifferent, assuming No (0) zero." >> ${arpmonitorlog}
   fi
   macdifferent=0
 fi
@@ -207,18 +207,18 @@ if (( macdifferent > 0 )); then
     parameterwarning+="macdiffpercent (-t) can only contain numbers between 1 and 100 (percent). With this parameter you can control how many Mac adresses may be different if you have choosen mac different to yes (or 1). asssuming default percentage: 80.%%break%%"
     macdiffpercent=80
     if (( DebugLevel > 0 )); then
-      echo "[Warning]macdiffpercent (-t) can only contain numbers between 1 and 100 (percent). With this parameter you can control how many Mac adresses may be different if you have choosen mac different to yes (or 1). asssuming default percentage: 80%" >> $arpmonitorlog
+      echo "[Warning]macdiffpercent (-t) can only contain numbers between 1 and 100 (percent). With this parameter you can control how many Mac adresses may be different if you have choosen mac different to yes (or 1). asssuming default percentage: 80%" >> ${arpmonitorlog}
     fi
   elif (( macdiffpercent > 0 )) || (( macdiffpercent < 101 )); then
     parameterwarning+="macdiffpercent (-t) can only contain numbers between 1 and 100 (percent). With this parameter you can control how many Mac adresses may be different if you have choosen mac different to yes (or 1). asssuming default percentage: 80.%%break%%"
     macdiffpercent=80
     if (( DebugLevel > 0 )); then
-      echo "[Warning]macdiffpercent (-t) can only contain numbers between 1 and 100 (percent). With this parameter you can control how many Mac adresses may be different if you have choosen mac different to yes (or 1). asssuming default percentage: 80%" >> $arpmonitorlog
+      echo "[Warning]macdiffpercent (-t) can only contain numbers between 1 and 100 (percent). With this parameter you can control how many Mac adresses may be different if you have choosen mac different to yes (or 1). asssuming default percentage: 80%" >> ${arpmonitorlog}
     fi
   fi
 else
   if (( DebugLevel > 0 )); then
-    echo "macdiffpercent (-t) is not needed since there is a zero tolerance on invalid Mac adresses through parameter (-f)" >> $arpmonitorlog
+    echo "macdiffpercent (-t) is not needed since there is a zero tolerance on invalid Mac adresses through parameter (-f)" >> ${arpmonitorlog}
   fi
 fi
 
@@ -228,13 +228,13 @@ if ! [[ "$gracefultime" =~ ^[0-9]+$ ]]; then
   parameterwarning+="gracefultime (-g) can only contain numbers. Here you can specify how long we will wait to give an ulitimate shutdown after the gracefully shutdown, minimum: 120 seconds (2 Minutes), we will asume 600 seconds (10 Minutes.%%break%%"
   gracefultime=600
   if (( DebugLevel > 0 )); then
-    echo "[Warning]gracefultime (-g) can only contain numbers. Here you can specify how long we will wait to give an ulitimate shutdown after the gracefully shutdown, minimum: 120 seconds (2 Minutes), we will asume 600 seconds (10 Minutes)" >> $arpmonitorlog
+    echo "[Warning]gracefultime (-g) can only contain numbers. Here you can specify how long we will wait to give an ulitimate shutdown after the gracefully shutdown, minimum: 120 seconds (2 Minutes), we will asume 600 seconds (10 Minutes)" >> ${arpmonitorlog}
   fi
 elif (( gracefultime < 120 )); then
   parameterwarning+="gracefultime (-g) has a minimum of 120 seconds waiting time (2 minutes), Assuming the minimal value: 120 seconds.%%break%%"
   gracefultime=120
   if (( DebugLevel > 0 )); then
-    echo "[Warning]gracefultime (-g) has a minimum of 120 seconds waiting time (2 minutes), Assuming the minimal value: 120 seconds." >> $arpmonitorlog
+    echo "[Warning]gracefultime (-g) has a minimum of 120 seconds waiting time (2 minutes), Assuming the minimal value: 120 seconds." >> ${arpmonitorlog}
   fi
 fi
 
@@ -250,7 +250,7 @@ elif (( maxloops > 600 )); then
    parameterwarning+="maxloops (-o) has a maximum of 600 loops, the value is too high, changing it to the maximum of 600.%%break%%"
    maxloops=600
    if (( DebugLevel > 0 )); then
-    echo "[Warning]maxloops (-o) has a maximum of 600 loops, the value is too high, changing it to the maximum of 600." >> $arpmonitorlog
+    echo "[Warning]maxloops (-o) has a maximum of 600 loops, the value is too high, changing it to the maximum of 600." >> ${arpmonitorlog}
    fi
 fi
 
@@ -274,13 +274,13 @@ if valid_ip $iprange; then
   do
     # process "$ipcount"
     if (( DebugLevel > 2 )); then
-       echo "Processing ipcount: $ipcount" >> $arpmonitorlog
+       echo "Processing ipcount: $ipcount" >> ${arpmonitorlog}
     fi
   done
   if (( ipcount > 3 )) then
     parameterwarning+="Entered IP address correct (-r), we will strip the last digit, so we can loop through the possible numbers.%%break%%"
     if (( DebugLevel > 0 )); then
-      echo "Entered IP address correct (-r), we will strip the last digit, so we can loop through the possible numbers." >> $arpmonitorlog
+      echo "Entered IP address correct (-r), we will strip the last digit, so we can loop through the possible numbers." >> "${arpmonitorlog}"
     fi
     $iprange=${IPNR[0]}
     $iprange+="."
@@ -298,31 +298,31 @@ fi
 if [ -d "$initialarp" ]; then
   parametererror+="Directory: $initialarp does NOT exists, please create the directory! option:-.%%break%%"
   if (( DebugLevel > 0 )); then
-    echo "[Error]Directory $initialarp does NOT exists, please create the directory! option:-i" >> $arpmonitorlog
+    echo "[Error]Directory $initialarp does NOT exists, please create the directory! option:-i" >> "${arpmonitorlog}"
   fi
 fi
 if [ -d "$initialdedup" ]; then
   parametererror+="Directory: $initialdedup does NOT exists, please create the directory! option:-.%%break%%"
   if (( DebugLevel > 0 )); then
-    echo "[Error]Directory $initialdedup does NOT exists, please create the directory! option:-d" >> $arpmonitorlog
+    echo "[Error]Directory $initialdedup does NOT exists, please create the directory! option:-d" >> "${arpmonitorlog}"
    fi
 fi
 if [ -d "$chkarp" ]; then
   parametererror+="Directory: $chkarp does NOT exists, please create the directory! option:-.%%break%%"
   if (( DebugLevel > 0 )); then
-    echo "[Error]Directory $chkarp does NOT exists, please create the directory! option:-c" >> $arpmonitorlog
+    echo "[Error]Directory $chkarp does NOT exists, please create the directory! option:-c" >> "${arpmonitorlog}"
    fi
 fi
 if [ -d "$chkdeduparp" ]; then
   parametererror+="Directory: $chkdeduparp does NOT exists, please create the directory! option:-.%%break%%"
   if (( DebugLevel > 0 )); then
-    echo "[Error]Directory $chkdeduparp does NOT exists, please create the directory! option:-u" >> $arpmonitorlog
+    echo "[Error]Directory $chkdeduparp does NOT exists, please create the directory! option:-u" >> "${arpmonitorlog}"
    fi
 fi
-if [ -d "$arpmonitorlog" ]; then
-  parametererror+="Directory: $arpmonitorlog does NOT exists, please create the directory! option:-.%%break%%"
+if [ -d "${arpmonitorlog}" ]; then
+  parametererror+="Directory: ${arpmonitorlog} does NOT exists, please create the directory! option:-.%%break%%"
   if (( DebugLevel > 0 )); then
-    echo "[Error]Directory $arpmonitorlog does NOT exists, please create the directory! option:-m" >> $arpmonitorlog
+    echo "[Error]Directory ${arpmonitorlog} does NOT exists, please create the directory! option:-m" >> "${arpmonitorlog}"
    fi
 fi
 
@@ -395,20 +395,24 @@ echo -e "${Cyan} -r: IP Range       ${Purple} (number) ${Cyan}: $iprange"
 #exit;
 
 if (( DebugLevel > 0 )); then
-  echo "Start the Arp Monitor routine, first do a initial arp-scan" >> $arpmonitorlog
+  echo "Start the Arp Monitor routine, first do a initial arp-scan" >> "${arpmonitorlog}"
 fi
+
+SCANiprange="${iprange}/24"
+
+echo "SCan IP Range: $SCANiprange"
 
 ## Get the initial Mac adresses of the network (Only Once and save it)
 #
-arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|' $iprange0/24 > $initialarp
+arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|' $SCANiprange > "${initialarp}"
 
 if (( DebugLevel > 0 )); then
-  echo "Remove the possible double entry;s from the initial ARP Scan" > $arpmonitorlog
+  echo "Remove the possible double entry;s from the initial ARP Scan" > "${arpmonitorlog}"
 fi
 
 ## Insert the arp initial file into an array, and break each line with WhiteSpace
 #
-IFS=$'\n' read -d '' -r -a initiallines < $initialarp
+IFS=$'\n' read -d '' -r -a initiallines < "${initialarp}"
 
 ## Remove the double entry's
 #
@@ -416,7 +420,7 @@ count=0
 initialduplicates=0
 
 if (( DebugLevel > 0 )); then
-  echo "## Deduplication of initial Arp-scan results" > $initialdedup
+  echo "## Deduplication of initial Arp-scan results" >> "${arpmonitorlog}"
 fi
 
 for initialline in "${initiallines[@]}"
@@ -431,13 +435,13 @@ do
     ## Debug purposes
     #
     if (( DebugLevel > 2 )); then
-      echo "Remember: $remember --> $initialline --> $tellen"
+      echo "Remember: $remember --> $initialline --> $tellen" >> "${arpmonitorlog}"
     fi
 
     if [ "$remember" = "$initialline" ]; then
       let found=1
       if (( DebugLevel > 1 )); then
-        echo "## Found a duplicate line: $initialline #########################" >> $arpmonitorlog
+        echo "## Found a duplicate line: $initialline #########################" >> "${arpmonitorlog}"
       fi
     fi
     let tellen=tellen+1
@@ -445,7 +449,7 @@ do
   if (( $found == 0 )) ; then
     ## Save this line it is unique
     #
-    echo $initialline >> $initialdedup
+    echo $initialline >> "${initialdedup}"
   else
     ## Count the duplicates
     #
@@ -458,10 +462,10 @@ initialcount=$count
 let endless=0
 while [ $endless -lt $maxloops ]; do
         if (( DebugLevel > 0 )); then
-          echo "Loop through each line of initial arp-scan" >> $arpmonitorlog
+          echo "Loop through each line of initial arp-scan" >> "${arpmonitorlog}"
         fi
 
-        IFS=$'\n' read -d '' -r -a initiallines < $initialdedup
+        IFS=$'\n' read -d '' -r -a initiallines < "${initialdedup}"
 
         count=0
         countfilledlines=0
@@ -473,8 +477,8 @@ while [ $endless -lt $maxloops ]; do
            IFS='|' read -ra INITIALADDR <<< "$initialline"
 
            if (( DebugLevel > 1 )); then
-                 echo "initial IP:  ${INITIALADDR[1]} - count: $count" >> $arpmonitorlog
-                 echo "initial Mac: ${INITIALADDR[2]} - count: $count" >> $arpmonitorlog
+                 echo "initial IP:  ${INITIALADDR[1]} - count: $count" >> "${arpmonitorlog}"
+                 echo "initial Mac: ${INITIALADDR[2]} - count: $count" >> "${arpmonitorlog}"
            fi
 
            InitialIP[$count]=${INITIALADDR[1]}
@@ -486,7 +490,7 @@ while [ $endless -lt $maxloops ]; do
                   #
                   countfilledlines=$((countfilledlines + 1))
                   if (( DebugLevel > 0 )); then
-                        echo "Filled InitialIP counted: ${InitialIP[$count]} - ${InitialMac[$count]}" >> $arpmonitorlog
+                        echo "Filled InitialIP counted: ${InitialIP[$count]} - ${InitialMac[$count]}" >> "${arpmonitorlog}"
                   fi
            fi
 
@@ -499,11 +503,11 @@ while [ $endless -lt $maxloops ]; do
         ## Sleep before doing checkups
         #
         if (( DebugLevel > 0 )); then
-          echo "Sleeping $iNTERVAL BEFORE NEXT INTERVAL CHECK...." >> $arpmonitorlog
+          echo "Sleeping $iNTERVAL BEFORE NEXT INTERVAL CHECK...." >> "${arpmonitorlog}"
         fi
         sleep $Interval
 
-        arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|' 192.30.177.0/24 > $chkarp
+        arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|' 192.30.177.0/24 > "${chkarp}"
 
         ## Insert the arp file into an array, and break each line with WhiteSpace
         #
@@ -513,7 +517,7 @@ while [ $endless -lt $maxloops ]; do
         #
         count=0
         chkduplicates=0
-        echo "## Deduplication of Returning Arp-scan results" > $chkdeduparp
+        echo "## Deduplication of Returning Arp-scan results" > "${chkdeduparp}"
         for chkline in "${chklines[@]}"
         do
           chkdedup[$count]=$chkline
@@ -526,13 +530,13 @@ while [ $endless -lt $maxloops ]; do
                 ## Debug purposes
                 #
                 if (( DebugLevel > 1 )); then
-                  echo "Remember: $remember --> $initialline --> $tellen"
+                  echo "Remember: $remember --> $initialline --> $tellen"  >> "${arpmonitorlog}"
                 fi
 
                 if [ "$remember" = "$chkline" ]; then
                   let found=1
                   if (( DebugLevel > 0 )); then
-                        echo "## Found a duplicate line: $chkline #########################" >> $arpmonitorlog
+                        echo "## Found a duplicate line: $chkline #########################" >> "${arpmonitorlog}"
                   fi
                 fi
                 let tellen=tellen+1
@@ -540,7 +544,7 @@ while [ $endless -lt $maxloops ]; do
           if (( $found == 0 )) ; then
                 ## Save this line it is unique
                 #
-                echo $chkline >> $chkdeduparp
+                echo $chkline >> "${chkdeduparp}"
           else
                 ## Count the duplicates
                 #
@@ -552,7 +556,7 @@ while [ $endless -lt $maxloops ]; do
 
         ## Read the deduplicated file
         #
-        IFS=$'\n' read -d '' -r -a chklines < $chkdeduparp
+        IFS=$'\n' read -d '' -r -a chklines < "$chkdeduparp"
 
         ## Debug purpeses, see all the lines
         #
@@ -570,7 +574,7 @@ while [ $endless -lt $maxloops ]; do
         do
            # do whatever on "$chkline" here
            if (( DebugLevel > 2 )); then
-                 echo $chkline >> $arpmonitorlog
+                 echo $chkline >> "${arpmonitorlog}"
            fi
 
            ## Split the string with delimiter P|pe from string $chkline
@@ -581,8 +585,8 @@ while [ $endless -lt $maxloops ]; do
            chkMac=${CHKADDR[2]}
 
            if (( DebugLevel > 2 )); then
-                 echo $chkIP
-                 echo $chkMac
+                 echo $chkIP >> "${arpmonitorlog}"
+                 echo $chkMac >> "${arpmonitorlog}"
            fi
 
            if [ "$chkIP" != "" ]; then
@@ -593,25 +597,25 @@ while [ $endless -lt $maxloops ]; do
                    ## Little less logging may be done, lets regulated it with a parameter
                    #
                    if (( DebugLevel > 2 )); then
-                         echo "Checking IP and Mac against original IP and Mac $tellen (${chkIP} : ${InitialIP[$tellen]} / ${chkMac} : ${                                                                      InitialMac[$tellen]} " >> $arpmonitorlog
+                         echo "Checking IP and Mac against original IP and Mac $tellen (${chkIP} : ${InitialIP[$tellen]} / ${chkMac} : ${InitialMac[$tellen]} " >> "${arpmonitorlog}"
                    fi
 
                    initIP=${InitialIP[$tellen]}
 
                    if [ "$chkIP" = "$initIP" ]; then
                          if (( DebugLevel > 0 )); then
-                           echo "found $chkIP - $initIP - Checking if Mac adress is correct...." >> $arpmonitorlog
+                           echo "found $chkIP - $initIP - Checking if Mac adress is correct...." >> "${arpmonitorlog}"
                          fi
                          initMac=${InitialMac[$tellen]}
                          if [ "$chkMac" = "$initMac" ]; then
                            if (( DebugLevel > 1 )); then
-                                 echo "Mac adress: $chkMac is the same as: $initMac" >> $arpmonitorlog
+                                 echo "Mac adress: $chkMac is the same as: $initMac" >> "${arpmonitorlog}"
                            fi
 
                            countmacok=$((countmacok + 1))
                          else
                            if (( DebugLevel > 1 )); then
-                                 echo "Mac adress: $chkMac is different: $initMac" >> $arpmonitorlog
+                                 echo "Mac adress: $chkMac is different: $initMac" >> "${arpmonitorlog}"
                            fi
                            countmacfault=$((countmacfault + 1))
                          fi
@@ -622,28 +626,28 @@ while [ $endless -lt $maxloops ]; do
           fi
         done
 
-        echo "Initial ARP count with duplicates: $initialcount"
-        echo "CountMac Total: $countmactotal"
-        echo "CountMac OK: $countmacok"
-        echo "CountMac Fault: $countmacfault"
-        echo "Count Filled Lines: $countfilledlines"
-        echo "Initial Duplicate lines found: $initialduplicates"
-        echo "Re-accuring Duplicates found: $chkduplicates"
+        echo "Initial ARP count with duplicates: ${initialcount}"
+        echo "CountMac Total: ${countmactotal}"
+        echo "CountMac OK: ${countmacok}"
+        echo "CountMac Fault: ${countmacfault}"
+        echo "Count Filled Lines: ${countfilledlines}"
+        echo "Initial Duplicate lines found: ${initialduplicates}"
+        echo "Re-accuring Duplicates found: ${chkduplicates}"
 
         if (( DebugLevel > 0 )); then
-          echo "Initial ARP count with duplicates: $initialcount" >> $arpmonitorlog
-          echo "CountMac Total: $countmactotal" >> $arpmonitorlog
-          echo "CountMac OK: $countmacok" >> $arpmonitorlog
-          echo "CountMac Fault: $countmacfault" >> $arpmonitorlog
-          echo "Count Filled Lines: $countfilledlines" >> $arpmonitorlog
-          echo "Initial Duplicate lines found: $initialduplicates" >> $arpmonitorlog
-          echo "Re-accuring Duplicates found: $chkduplicates" >> $arpmonitorlog
+          echo "Initial ARP count with duplicates: $initialcount" >> "${arpmonitorlog}"
+          echo "CountMac Total: $countmactotal" >> "${arpmonitorlog}"
+          echo "CountMac OK: $countmacok" >> "${arpmonitorlog}"
+          echo "CountMac Fault: $countmacfault" >> "${arpmonitorlog}"
+          echo "Count Filled Lines: $countfilledlines" >> "${arpmonitorlog}"
+          echo "Initial Duplicate lines found: $initialduplicates" >> "${arpmonitorlog}"
+          echo "Re-accuring Duplicates found: $chkduplicates" >> "${arpmonitorlog}"
         fi
 
         howmanyprocent=$((100*$countmacok/$countfilledlines))
-        echo "How many percent is missing from the initial arp-scan: $howmanyprocent"
+        echo "How many percent is missing from the initial arp-scan: ${howmanyprocent}"
         if (( DebugLevel > 0 )); then
-          echo "How many percent is missing from the initial arp-scan: $howmanyprocent" >> $arpmonitorlog
+          echo "How many percent is missing from the initial arp-scan: ${howmanyprocent}" >> "${arpmonitorlog}"
         fi
 
         ## Check if the percentage is less than the minimum percentage, if it is less take action.
@@ -652,14 +656,14 @@ while [ $endless -lt $maxloops ]; do
         if [ $howmanyprocent -lt $minpercentage ]; then
           ## Less than the minimal percentage is there, take action!
           if (( DebugLevel > 0 )); then
-                echo "The found ip adres percentage: $howmanyprocent is lower than $minpercentage, take action!" >> $arpmonitorlog
+                echo "The found ip adres percentage: $howmanyprocent is lower than $minpercentage, take action!" >> "${arpmonitorlog}"
           fi
 
           let takeaction=1
         else
           ## Within percentage, all is ok!
           if (( DebugLevel > 0 )); then
-                echo "The found ip adres percentage: $howmanyprocent is higher than $minpercentage, all is well!" >> $arpmonitorlog
+                echo "The found ip adres percentage: $howmanyprocent is higher than $minpercentage, all is well!" >> "${arpmonitorlog}"
           fi
           takeaction=0
         fi
@@ -669,19 +673,19 @@ while [ $endless -lt $maxloops ]; do
         if [ $macdifferent -eq 0 ]; then
           ## All mac adresses must be the same on the same ip adressses
           if (( DebugLevel > 0 )); then
-                echo "All Mac adresses MUST be the same, check if there are faulty MAc adresses" >> $arpmonitorlog
+                echo "All Mac adresses MUST be the same, check if there are faulty MAc adresses" >> "${arpmonitorlog}"
           fi
 
           if [ $countmacfault -gt 0 ]; then
                 ## There is a problem, an mac adress is different
                 if (( DebugLevel > 0 )); then
-                  echo "Number of faulty mac adresses: $countmacfault, None is the Rule, take action!" >> $arpmonitorlog
+                  echo "Number of faulty mac adresses: $countmacfault, None is the Rule, take action!" >> "${arpmonitorlog}"
                 fi
 
                 let takeaction=1
           else
                 if (( DebugLevel > 0 )); then
-                  echo "All Mac adresses are the same as the initial readout by arp-scan" >> $arpmonitorlog
+                  echo "All Mac adresses are the same as the initial readout by arp-scan" >> "${arpmonitorlog}"
                 fi
           fi
         else
@@ -689,20 +693,20 @@ while [ $endless -lt $maxloops ]; do
           ## $macdiffpercent
           #
           if (( DebugLevel > 0 )); then
-                echo "Not all Mac adresses in the network have to be exactly the same, a minimal percentage is given: $diffprocent" >>                                                                       $arpmonitorlog
+                echo "Not all Mac adresses in the network have to be exactly the same, a minimal percentage is given: $diffprocent" >> "${arpmonitorlog}"
           fi
 
           diffprocent=$((100*$countmacok/$countmactotal))
           if [ $diffprocent -lt $macdiffpercent]; then
                 ## Less than the minimal percentage is there, take action!
                 if (( DebugLevel > 0 )); then
-                  echo "The Mac pass percentage: $macdiffpercent is lower than $diffprocent, take action!" >> $arpmonitorlog
+                  echo "The Mac pass percentage: $macdiffpercent is lower than $diffprocent, take action!" >> "${arpmonitorlog}"
                 fi
                 let takeaction=1
           else
                 ## Within percentage, all is ok!
                 if (( DebugLevel > 0 )); then
-                  echo "The Mac pass percentage: $howmanyprocent is higher than $minpercentage, all is well!" >> $arpmonitorlog
+                  echo "The Mac pass percentage: $howmanyprocent is higher than $minpercentage, all is well!" >> "${arpmonitorlog}"
                 fi
 
                 let takeaction=0
@@ -712,14 +716,14 @@ while [ $endless -lt $maxloops ]; do
         echo "Do we need to take action (0 = No / 1 = Yes)? : $takeaction"
         if (( takeaction > 0 )); then
           if (( DebugLevel > 0 )); then
-                echo "Do we need to take action (0 = No / 1 = Yes)? : $takeaction --> Yes! we need to take action!" >> $arpmonitorlog
+                echo "Do we need to take action (0 = No / 1 = Yes)? : $takeaction --> Yes! we need to take action!" >> "${arpmonitorlog}"
           fi
 
           ## Fill a string to see if there are running Vm's
           #
           RunningVMs=$(VBoxManage list runningvms)
           if (( DebugLevel > 0 )); then
-                echo "Found the following machijnes running: $RunningVMs" >> $arpmonitorlog
+                echo "Found the following machijnes running: $RunningVMs" >> "${arpmonitorlog}"
           fi
           if [ "$RunningVMs" != "" ]; then
                 ## Yes the VM for this user is running, make it shutdown gracefully
@@ -736,18 +740,18 @@ while [ $endless -lt $maxloops ]; do
                 ## First get the machine name the smart way (From the string)
                 #
                 if (( DebugLevel > 1 )); then
-                  echo "Pressing ACPI Powerbutton for Virtual Machine:  $VboxName to gracefully shutdown the machine" >> $arpmonitorlog
+                  echo "Pressing ACPI Powerbutton for Virtual Machine:  $VboxName to gracefully shutdown the machine" >> "${arpmonitorlog}"
                 fi
                 ResultPWRButton=$(VBoxManage controlvm $VboxName acpipowerbutton)
 
                 if (( DebugLevel > 1 )); then
-                  echo "Give time for the Virtual Machine:  $VboxName to gracefully shutdown, sleep for $gracefultime seconds" >> $arpmonitorlog
-                  echo $ResultPWRButton >> $arpmonitorlog
+                  echo "Give time for the Virtual Machine:  $VboxName to gracefully shutdown, sleep for $gracefultime seconds" >> "${arpmonitorlog}"
+                  echo $ResultPWRButton >> "${arpmonitorlog}"
                 fi
                 sleep $gracefultime
 
                 if (( DebugLevel > 1 )); then
-                  echo "To be fully sure, poweroff the VM : $VboxName"
+                  echo "To be fully sure, poweroff the VM : ${VboxName}" >> "${arpmonitorlog}"
                 fi
                 ResultPowerOFF=$(VBoxManage controlvm $VboxName poweroff)
 
@@ -755,23 +759,23 @@ while [ $endless -lt $maxloops ]; do
                 #
                 let endless=endless+1000
                 if (( DebugLevel > 1 )); then
-                  echo "VM has been shut down" >> $arpmonitorlog
-                  echo $ResultPowerOFF >> $arpmonitorlog
+                  echo "VM has been shut down" >> "${arpmonitorlog}"
+                  echo $ResultPowerOFF >> "${arpmonitorlog}"
                 fi
           else
                 if (( DebugLevel > 0 )); then
-                  echo "There are no Running VM's found, we do not need todo anything" >> $arpmonitorlog
+                  echo "There are no Running VM's found, we do not need todo anything" >> "${arpmonitorlog}"
                 fi
           fi
         else
           if (( DebugLevel > 0 )); then
-                echo "Do we need to take action (0 = No / 1 = Yes)? : $takeaction --> No, no action needed!" >> $arpmonitorlog
+                echo "Do we need to take action (0 = No / 1 = Yes)? : $takeaction --> No, no action needed!" >> "${arpmonitorlog}"
           fi
           ## Fill a string to see if there are running Vm's
           #
           RunningVMs=$(VBoxManage list runningvms)
           if (( DebugLevel > 0 )); then
-                echo "Found the following machijnes running: $RunningVMs">> $arpmonitorlog
+                echo "Found the following machijnes running: $RunningVMs">> "${arpmonitorlog}"
           fi
         fi
   let endless=endless+1
