@@ -404,7 +404,7 @@ echo "SCan IP Range: $SCANiprange"
 
 ## Get the initial Mac adresses of the network (Only Once and save it)
 #
-arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|' $SCANiprange > "${initialarp}"
+arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|' "${SCANiprange}" > "${initialarp}"
 
 if (( DebugLevel > 0 )); then
   echo "Remove the possible double entry;s from the initial ARP Scan" > "${arpmonitorlog}"
@@ -412,7 +412,7 @@ fi
 
 ## Insert the arp initial file into an array, and break each line with WhiteSpace
 #
-IFS=$'\n' read -d '' -r -a initiallines < "${initialarp}"
+IFS=$'\n' read -d '' -r -a initiallines < "$initialarp"
 
 ## Remove the double entry's
 #
@@ -450,10 +450,16 @@ do
     ## Save this line it is unique
     #
     echo $initialline >> "${initialdedup}"
+    if (( DebugLevel > 2 )); then
+      echo "Add line to dedup file it is unique: ${initialline}" >> "${arpmonitorlog}"
+    fi
   else
     ## Count the duplicates
     #
     initialduplicates=$((initialduplicates + 1))
+    if (( DebugLevel > 2 )); then
+      echo "Count the duplicates: ${initialduplicates}" >> "${arpmonitorlog}"
+    fi
   fi
   count=$((count + 1))
 done
@@ -465,7 +471,7 @@ while [ $endless -lt $maxloops ]; do
           echo "Loop through each line of initial arp-scan" >> "${arpmonitorlog}"
         fi
 
-        IFS=$'\n' read -d '' -r -a initiallines < "${initialdedup}"
+        IFS=$'\n' read -d '' -r -a initiallines < "$initialdedup"
 
         count=0
         countfilledlines=0
@@ -644,7 +650,11 @@ while [ $endless -lt $maxloops ]; do
           echo "Re-accuring Duplicates found: $chkduplicates" >> "${arpmonitorlog}"
         fi
 
-        howmanyprocent=$((100*$countmacok/$countfilledlines))
+        if (( $countfilledlines < 0 )); then
+          howmanyprocent=$((100*$countmacok/$countfilledlines))
+        else
+          howmanyprocent=0
+        fi
         echo "How many percent is missing from the initial arp-scan: ${howmanyprocent}"
         if (( DebugLevel > 0 )); then
           echo "How many percent is missing from the initial arp-scan: ${howmanyprocent}" >> "${arpmonitorlog}"
