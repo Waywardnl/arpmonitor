@@ -381,7 +381,7 @@ echo -e "${Cyan} -d: Initialdedup   ${Purple} (file)   ${Cyan}: $initialdedup"
 echo -e "${Cyan} -c: ChkArp         ${Purple} (file)   ${Cyan}: $chkarp"
 echo -e "${Cyan} -e: chkdeduparp    ${Purple} (file)   ${Cyan}: $chkdeduparp"
 echo -e "${Cyan} -l: LANinterface   ${Purple} (name)   ${Cyan}: $LANinterface"
-echo -e "${Cyan} -v: Interval       ${Purple} (number) ${Cyan}: $Interval"
+echo -e "${Cyan} -v: Interval       ${Purple} (seconds)${Cyan}: $Interval"
 echo -e "${Cyan} -d: DebugLevel     ${Purple} (number) ${Cyan}: $DebugLevel"
 echo -e "${Cyan} -p: minpercentage  ${Purple} (number) ${Cyan}: $minpercentage"
 echo -e "${Cyan} -----------------------------------------------------------"
@@ -422,6 +422,13 @@ initialduplicates=0
 if (( DebugLevel > 0 )); then
   echo "## Deduplication of initial Arp-scan results" >> "${arpmonitorlog}"
 fi
+
+## Start a new initial De-Duplication File
+#
+DATUMTijd=$(date +%A-%d-%B-%Y--%T)
+STARTMessage="Start Date & Time of initial deduplication: "
+STARTMessage+="${DATUMTijd}"
+echo ${STARTMessage} > "${initialdedup}"
 
 for initialline in "${initiallines[@]}"
 do
@@ -513,23 +520,32 @@ while [ $endless -lt $maxloops ]; do
         fi
         sleep $Interval
 
-        arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|' 192.30.177.0/24 > "${chkarp}"
+        arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|' "${SCANiprange}" > "${chkarp}"
 
         ## Insert the arp file into an array, and break each line with WhiteSpace
         #
-        IFS=$'\n' read -d '' -r -a chklines < $chkarp
+        IFS=$'\n' read -d '' -r -a chklines < "$chkarp"
 
         ## Remove the double entry's
         #
         count=0
         chkduplicates=0
-        echo "## Deduplication of Returning Arp-scan results" > "${chkdeduparp}"
+        echo "## Deduplication of Returning Arp-scan results" >> "${arpmonitorlog}"
+
+        ## Write the first line of the interval deduplication file
+        #
+        DATUMTijd=$(date +%A-%d-%B-%Y--%T)
+        STARTMessage="Start Date & Time of Check interval deduplication: "
+        STARTMessage+="${DATUMTijd}"
+        echo ${STARTMessage} > "${chkdeduparp}"
+
         for chkline in "${chklines[@]}"
         do
           chkdedup[$count]=$chkline
 
           let tellen=0
           let found=0
+          #remember=""
           while [ $tellen -lt $count ]; do
                 remember=${chkdedup[$tellen]}
 
