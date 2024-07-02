@@ -31,30 +31,35 @@ done
 
 ## Colors for echo output
 #
+
+## Colors for echo output
+#
+declare -A kleur
+
 # Reset
-Color_Off='\033[0m'       # Text Reset
+kleur[Color_Off]='\033[0m'       # Text Reset
 
 # Regular Colors
-Black='\033[0;30m'        # Black
-Red='\033[0;31m'          # Red
-LightRed='\033[1;31m'     # Light Red
-Green='\033[0;32m'        # Green
-Yellow='\033[0;33m'       # Yellow
-Blue='\033[0;34m'         # Blue
-Purple='\033[0;35m'       # Purple
-Cyan='\033[0;36m'         # Cyan
-White='\033[0;37m'        # White
-DarkGray='\033[1;30m'     # Dark Gray
+kleur[Black]='\033[0;30m'        # Black
+kleur[Red]='\033[0;31m'          # Red
+kleur[LightRed]='\033[1;31m'     # Light Red
+kleur[Green]='\033[0;32m'        # Green
+kleur[Yellow]='\033[0;33m'       # Yellow
+kleur[Blue]='\033[0;34m'         # Blue
+kleur[Purple]='\033[0;35m'       # Purple
+kleur[Cyan]='\033[0;36m'         # Cyan
+kleur[White]='\033[0;37m'        # White
+kleur[DarkGray]='\033[1;30m'     # Dark Gray
 
 # Background
-On_Black='\033[40m'       # Black
-On_Red='\033[41m'         # Red
-On_Green='\033[42m'       # Green
-On_Yellow='\033[43m'      # Yellow
-On_Blue='\033[44m'        # Blue
-On_Purple='\033[45m'      # Purple
-On_Cyan='\033[46m'        # Cyan
-On_White='\033[47m'       # White
+kleur[OnBlack]='\033[40m'       # Black
+kleur[OnRed]='\033[41m'         # Red
+kleur[OnGreen]='\033[42m'       # Green
+kleur[OnYellow]='\033[43m'      # Yellow
+kleur[OnBlue]='\033[44m'        # Blue
+kleur[OnPurple]='\033[45m'      # Purple
+kleur[OnCyan]='\033[46m'        # Cyan
+kleur[OnWhite]='\033[47m'       # White
 
 # Test an IP address for validity:
 # Usage:
@@ -373,24 +378,24 @@ fi
 
 ## We will contineu the script
 #
-echo -e "${Cyan} -----------------------------------------------------------"
-echo -e "${Cyan} Received following parameters"
-echo -e "${Cyan} -----------------------------------------------------------"
-echo -e "${Cyan} -i: Initialarp     ${Purple} (file)   ${Cyan}: $initialarp"
-echo -e "${Cyan} -d: Initialdedup   ${Purple} (file)   ${Cyan}: $initialdedup"
-echo -e "${Cyan} -c: ChkArp         ${Purple} (file)   ${Cyan}: $chkarp"
-echo -e "${Cyan} -e: chkdeduparp    ${Purple} (file)   ${Cyan}: $chkdeduparp"
-echo -e "${Cyan} -l: LANinterface   ${Purple} (name)   ${Cyan}: $LANinterface"
-echo -e "${Cyan} -v: Interval       ${Purple} (seconds)${Cyan}: $Interval"
-echo -e "${Cyan} -d: DebugLevel     ${Purple} (number) ${Cyan}: $DebugLevel"
-echo -e "${Cyan} -p: minpercentage  ${Purple} (number) ${Cyan}: $minpercentage"
-echo -e "${Cyan} -----------------------------------------------------------"
-echo -e "${Cyan} -f: macdifferent   ${Purple} (bolean) ${Cyan}: $macdifferent"
-echo -e "${Cyan} -t: macdiffpercent ${Purple} (number) ${Cyan}: $macdiffpercent"
-echo -e "${Cyan} -----------------------------------------------------------"
-echo -e "${Cyan} -g: gracefultime   ${Purple} (seconds)${Cyan}: $gracefultime"
-echo -e "${Cyan} -o: maxloops       ${Purple} (number) ${Cyan}: $maxloops"
-echo -e "${Cyan} -r: IP Range       ${Purple} (number) ${Cyan}: $iprange"
+echo -e "${kleur[Cyan]} -----------------------------------------------------------"
+echo -e "${kleur[Cyan]} Received following parameters"
+echo -e "${kleur[Cyan]} -----------------------------------------------------------"
+echo -e "${kleur[Cyan]} -i: Initialarp     ${kleur[Purple]} (file)   ${kleur[Cyan]}: $initialarp"
+echo -e "${kleur[Cyan]} -d: Initialdedup   ${kleur[Purple]} (file)   ${kleur[Cyan]}: $initialdedup"
+echo -e "${kleur[Cyan]} -c: ChkArp         ${kleur[Purple]} (file)   ${kleur[Cyan]}: $chkarp"
+echo -e "${kleur[Cyan]} -e: chkdeduparp    ${kleur[Purple]} (file)   ${kleur[Cyan]}: $chkdeduparp"
+echo -e "${kleur[Cyan]} -l: LANinterface   ${kleur[Purple]} (name)   ${kleur[Cyan]}: $LANinterface"
+echo -e "${kleur[Cyan]} -v: Interval       ${kleur[Purple]} (seconds)${kleur[Cyan]}: $Interval"
+echo -e "${kleur[Cyan]} -d: DebugLevel     ${kleur[Purple]} (number) ${kleur[Cyan]}: $DebugLevel"
+echo -e "${kleur[Cyan]} -p: minpercentage  ${kleur[Purple]} (number) ${kleur[Cyan]}: $minpercentage"
+echo -e "${kleur[Cyan]} -----------------------------------------------------------"
+echo -e "${kleur[Cyan]} -f: macdifferent   ${kleur[Purple]} (bolean) ${kleur[Cyan]}: $macdifferent"
+echo -e "${kleur[Cyan]} -t: macdiffpercent ${kleur[Purple]} (number) ${kleur[Cyan]}: $macdiffpercent"
+echo -e "${kleur[Cyan]} -----------------------------------------------------------"
+echo -e "${kleur[Cyan]} -g: gracefultime   ${kleur[Purple]} (seconds)${kleur[Cyan]}: $gracefultime"
+echo -e "${kleur[Cyan]} -o: maxloops       ${kleur[Purple]} (number) ${kleur[Cyan]}: $maxloops"
+echo -e "${kleur[Cyan]} -r: IP Range       ${kleur[Purple]} (number) ${kleur[Cyan]}: $iprange"
 
 #exit;
 
@@ -723,7 +728,7 @@ while [ $endless -lt $maxloops ]; do
           fi
 
           diffprocent=$((100*$countmacok/$countmactotal))
-          if [ $diffprocent -lt $macdiffpercent]; then
+          if [ $diffprocent -lt $macdiffpercent ]; then
                 ## Less than the minimal percentage is there, take action!
                 if (( DebugLevel > 0 )); then
                   echo "The Mac pass percentage: $macdiffpercent is lower than $diffprocent, take action!" >> "${arpmonitorlog}"
