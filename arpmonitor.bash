@@ -1,5 +1,7 @@
 #!/usr/local/bin/bash
 
+arpmonitorlog="arp_error.log"
+
 while getopts i:e:c:u:m:l:v:d:p:f:t:g:o:h:r: flag
 do
     case "${flag}" in
@@ -61,6 +63,89 @@ kleur[OnPurple]='\033[45m'      # Purple
 kleur[OnCyan]='\033[46m'        # Cyan
 kleur[OnWhite]='\033[47m'       # White
 
+## What do we use to break the line in a big BIG $tring?
+#
+breken="%%break%%"
+
+## Function to write log files
+#
+function WriteLog()
+  {
+     ## Fucntion to write to log files, First Get the date
+     ## Put it into a $string
+     ##
+     ## $1 = Write to log? (1=yes/0=no)
+     ## $2 = Message to Write (and/or Print)
+     ## $3 = Write to screen (1=yes/0=no)
+     ## $4 = Color? (Empty = No / Filled = Color)
+     #
+     funcDATUMTijd=$(date +%A-%d-%B-%Y--%T)
+     FUNCMessage="${funcDATUMTijd}"
+     FUNCMessage+=" --> "
+
+     if (( DebugLevel > 4 )); then
+         echo "WriteLog Function called!"
+         echo $1
+         echo $2
+         echo $3
+         echo $4
+     fi
+
+     ## $5 <> "" Then print [Error] [Warning] or [Info]
+     ## in front of the log entry
+     #
+     if [ -n "$5" ]; then
+       if [ "$5" = "[E]" ]; then
+         prefix="[Error]"
+       elif [ "$5" = "[W]" ]; then
+         prefix="[Warning]"
+       elif [ "$5" = "[I]" ]; then
+         prefix="[Info]"
+       else
+         prefix=""
+       fi
+     else
+       prefix=""
+     fi
+
+     ## Get Date Time of this moment in THIS Function
+     #
+     funcDATUMTijd=$(date +%A-%d-%B-%Y--%T)
+
+     ## Fill the message with value 2 from function
+     #
+     FUNCMessage=$2
+     LOGmsg=${funcDATUMTijd}
+     LOGmsg+=" --> "
+     LOGmsg+=$prefix
+     LOGmsg+=" "
+     LOGmsg+=$FUNCMessage
+
+     ## $1 > 0 then Write String $2 to log file
+     #
+     if (( $1 > 0 )); then
+          ## Add an entry to the log file
+          #
+          echo $LOGmsg >> "${arpmonitorlog}"
+     fi
+
+     ## If $3 Greater than 0 then print to COnsole (Write-Host)
+     #
+     if (($3 > 0)); then
+         if [ "$4" = "" ]; then
+              ## Color is EMPTY, so NOT defined, use standard color
+              ##
+              ## echo $FUNCMessage
+              #
+              echo -e "${kleur[Color_Off]}${FUNCMessage}"
+         else
+              ## Print text in color to screen
+              #
+              echo -e "${kleur[$4]}${FUNCMessage}"
+         fi
+     fi
+  }
+
 # Test an IP address for validity:
 # Usage:
 #      valid_ip IP_ADDRESS
@@ -120,27 +205,48 @@ else
   ## Define Initial ARP result file
   #
   if [ "$initialarp" = "" ]; then
-    parametererror+="[Error] initialarp (-i) is not filled in, This is needed for a location for the file of the initialarp scan.%%break%%"
+    whatmsg="initialarp (-i) is not filled in, This is needed for a location for the file of the initialarp scan."
+    parametererror+=$whatmsg
+    parametererror+=$breken
+    WriteLog 1 "$whatmsg" 0 Red [E]
   fi
   if [ "$initialdedup" = "" ]; then
-    parametererror+="[Error] initialdedup (-e) is not filled in, This is needed to place the file with unique entry's by arp-scan.%%break%%"
+    whatmsg="[Error] initialdedup (-e) is not filled in, This is needed to place the file with unique entry's by arp-scan."
+    parametererror+=$whatmsg
+    parametererror+=$breken
+    WriteLog 1 "$whatmsg" 0 Red
   fi
   if [ "$chkarp" = "" ]; then
-    parametererror+="[Error]chkarp (-c) is not filled in, This is needed to place the interval arp-scans file.%%break%%"
+    whatmsg="[Error]chkarp (-c) is not filled in, This is needed to place the interval arp-scans file."
+    parametererror+=$whatmsg
+    parametererror+=$breken
+    WriteLog 1 "$whatmsg" 0 Red
   fi
   if [ "$chkdeduparp" = "" ]; then
-    parametererror+="[Error]chkdeduparp (-u) is not filled in, This is needed to place the interval arp-scans file.%%break%%"
+    whatmsg="[Error]chkdeduparp (-u) is not filled in, This is needed to place the interval arp-scans file."
+    parametererror+=$whatmsg
+    parametererror+=$breken
+    WriteLog 1 "$whatmsg" 0 Red
   fi
   echo "Aprmonitorlog: ${arpmonitorlog}";
   if [ "${arpmonitorlog}" = "" ]; then
-    parametererror+="[Error]${arpmonitorlog} (-m) is not filled in, This is needed to place the interval arp-scans file.%%break%%"
+    whatmsg="[Error]${arpmonitorlog} (-m) is not filled in, This is needed to place the interval arp-scans file."
+    parametererror+=$whatmsg
+    parametererror+=$breken
+    WriteLog 1 "$whatmsg" 0 Red
   fi
   if [ "$parametererror" = "" ]; then
-    parameterTIP+="If you are running this script under a particular user, you can use homedir (-h yes) to let the file location fill in automaticl.%%break%%"
+    whatmsg="If you are running this script under a particular user, you can use homedir (-h yes) to let the file location fill in automaticl."
+    parameterTIP+=$whatmsg
+    parameterTIP+=$breken
+    WriteLog 1 "$whatmsg" 0 Red
   fi
 fi
 if [ "$LANinterface" = "" ]; then
-  parametererror+="[Error]LANinterface i(-l) is empty, Please specify the Lan interface you wnat to use for the arp-scan.%%break%%"
+  whatmsg="[Error]LANinterface i(-l) is empty, Please specify the Lan interface you wnat to use for the arp-scan."
+  parametererror+=$whatmsg
+  parametererror+=$breken
+  WriteLog 1 "$whatmsg" 0 Red
 fi
 
 ## Debug level
@@ -148,10 +254,17 @@ fi
 #
 echo "Debuglevel: ${DebugLevel}";
 if ! [[ "$DebugLevel" =~ ^[0-9]+$ ]]; then
-  parameterwarning+="DebugLevel (-d) can only contain number (0:None,1:Basic,2: Some More, 3:Extensive) - This parameter gives you control on how much logging must be done. Assuming default logging: .%%break%%"
+  whatmsg="DebugLevel (-d) can only contain number (0:None,1:Basic,2: More, 3:Some more, 4:Extensive, 5:MegaBytes Extensive) - This parameter gives you control on how much logging must be done. Assuming default logging: 3"
+  parameterwarning+=$whatmsg
+  parameterwarning+=$breken
+
+  WriteLog 1 "$whatmsg" 0 Yellow
   DebugLevel=1
-elif (( DebugLevel > 3 )); then
-  echo "[Warning]DebugLevel (-d) can only contain number (0:None,1:Basic,2: Some More, 3:Extensive) - This parameter gives you control on how much logging must be done. Assuming highest logging: .%%break%%"
+elif (( DebugLevel > 5 )); then
+  ## Write to the log file
+  #
+  whatmsg="DebugLevel (-d) is too high (0:None,1:Basic,2: More, 3:Some more, 4:Extensive, 5:MegaBytes Extensive) - Assuming default logging: 3"
+  WriteLog 1 "$whatmsg" 0 Yellow
   DebugLevel=3
 fi
 
@@ -159,31 +272,43 @@ fi
 ## 3600 = 1 hour / 7200 = 2 hours
 #
 if ! [[ "$Interval" =~ ^[0-9]+$ ]]; then
-  parameterwarning+="[Warning]Interval (-v) can only contain numbers. Here you can specify how long the loop must wait before doing another arp scan. Assuming default: 7200 seconds (2 Hours.%%break%%"
+  whatmsg="[Warning] Interval (-v) can only contain numbers. Here you can specify how long the loop must wait before doing another arp scan. Assuming default: 7200 seconds (2 Hours)"
+  parameterwarning+=$whatmsg
+  parameterwarning+=$breken
+
+  #WriteLog 1 "$whatmsg" 0 Red
   Interval=7200
   if (( DebugLevel > 0 )); then
-    echo "[Warning] Interval (-v) can only contain numbers. Here you can specify how long the loop must wait before doing another arp scan. Assuming default: 7200 seconds (2 Hours)" >> "${arpmonitorlog}"
+    WriteLog 1 "$whatmsg" 0 Yellow
   fi
 elif (( Interval < 300 )); then
-  parameterwarning+="[Warning]Interval (-v) has a minimum of 300 seconds waiting time (5 minutes), Assuming the minimal value: 300 seconds.%%break%%"
+  whatmsg="[Warning]Interval (-v) has a minimum of 300 seconds waiting time (5 minutes), Assuming the minimal value: 300 seconds."
+  parameterwarning+=$whatmsg
+  parameterwarning+=$breken
   Interval=300
   if (( DebugLevel > 0 )); then
-    echo "[Warning]Interval (-v) has a minimum of 300 seconds waiting time (5 minutes), Assuming the minimal value: 300 seconds." >> "${arpmonitorlog}"
+    WriteLog 1 "$whatmsg" 0 Yellow
   fi
 fi
 
 ## What is the percentage that should be reachable on IP adresses?
 #
 if ! [[ "$minpercentage" =~ ^[0-9]+$ ]]; then
-  parameterwarning+="minpercentage (-p) can only contain numbers between 1 and 100 (%percent%). This parameter gives you control when there is a too low percentage of IP adresses and Mac adresses changed. Assuming standard 70.%%break%%"
+  whatmsg="minpercentage (-p) can only contain numbers between 1 and 100 (%percent%). This parameter gives you control when there is a too low percentage of IP adresses and Mac adresses changed. Assuming standard 70.%%break%%"
+  parameterwarning+=$whatmsg
+  parameterwarning+=$breken
+
   if (( DebugLevel > 0 )); then
-    echo "[Warning]minpercentage (-p) can only contain numbers between 1 and 100 (%percent%). This parameter gives you control when there is a too low percentage of IP adresses and Mac adresses changed. Assuming standard 70%" >> "${arpmonitorlog}"
+    WriteLog 1 "$whatmsg" 0 Yellow
   fi
   minpercentage=70
 elif (( minpercentage > 0 )) || (( minpercentage < 101 )); then
-  parameterwarning+="minpercentage (-p) out of bounce! It can only contain numbers between 1 and 100 (%percent%). This parameter gives you control when there is a too low percentage of IP adresses and Mac adresses changed. Assuming standard 70.%%break%%"
+  whatmsg="minpercentage (-p) out of bounce! It can only contain numbers between 1 and 100 (%percent%). This parameter gives you control when there is a too low percentage of IP adresses and Mac adresses changed. Assuming standard 70."
+  parameterwarning+=$whatmsg
+  parameterwarning+=$breken
+
   if (( DebugLevel > 0 )); then
-    echo "[Warning]minpercentage (-p) can only contain numbers between 1 and 100 (%percent%). This parameter gives you control when there is a too low percentage of IP adresses and Mac adresses changed. Assuming standard 70%" >> "${arpmonitorlog}"
+    WriteLog 1 "$whatmsg" 0 Yellow
   fi
   minpercentage=70
 fi
@@ -193,14 +318,19 @@ fi
 macdifferent="${macdifferent^^}"
 
 if [ "$macdifferent" = "Y" ] || [ "$macdifferent" = "YES" ] || [ "$macdifferent" = "JA" ] || [ "$macdifferent" = "1" ]; then
+  whatmsg="User is ok with some Mac adresses to be different (-f). macdifferent=1 --> User also has to define percentage"
+  parameterwarning+=$whatmsg
+  parameterwarning+=$breken
   if (( DebugLevel > 0 )); then
-    echo "[Warning]User is ok with some Mac adresses to be different (-f). macdifferent=1 --> User also has to define percentage" >> "${arpmonitorlog}"
+    WriteLog 1 "$whatmsg" 0 Yellow
   fi
   macdifferent=1
-  parameterwarning+="User is ok with some Mac adresses to be different (-f). Also define the percentag.%%break%%"
 else
+  whatmsg="No input or invalid input for macdifferent, assuming No (0) zero."
+  parameterwarning+=$whatmsg
+  parameterwarning+=$breken
   if (( DebugLevel > 0 )); then
-    echo "[Warning]No input or invalid input for macdifferent, assuming No (0) zero." >> ${arpmonitorlog}
+    WriteLog 1 "$whatmsg" 0 Yellow
   fi
   macdifferent=0
 fi
@@ -209,37 +339,50 @@ fi
 #
 if (( macdifferent > 0 )); then
   if ! [[ "$macdiffpercent" =~ ^[0-9]+$ ]]; then
-    parameterwarning+="macdiffpercent (-t) can only contain numbers between 1 and 100 (percent). With this parameter you can control how many Mac adresses may be different if you have choosen mac different to yes (or 1). asssuming default percentage: 80.%%break%%"
+    whatmsg="macdiffpercent (-t) can only contain numbers between 1 and 100 (percent). With this parameter you can control how many Mac adresses may be different if you have choosen mac different to yes (or 1). asssuming default percentage: 80."
+    parameterwarning+=$whatmsg
+    parameterwarning+=$breken
     macdiffpercent=80
+
     if (( DebugLevel > 0 )); then
-      echo "[Warning]macdiffpercent (-t) can only contain numbers between 1 and 100 (percent). With this parameter you can control how many Mac adresses may be different if you have choosen mac different to yes (or 1). asssuming default percentage: 80%" >> ${arpmonitorlog}
+      WriteLog 1 "$whatmsg" 0 Yellow
     fi
   elif (( macdiffpercent > 0 )) || (( macdiffpercent < 101 )); then
-    parameterwarning+="macdiffpercent (-t) can only contain numbers between 1 and 100 (percent). With this parameter you can control how many Mac adresses may be different if you have choosen mac different to yes (or 1). asssuming default percentage: 80.%%break%%"
+    whatmsg="macdiffpercent (-t) can only contain numbers between 1 and 100 (percent)(%). With this parameter you can control how many Mac adresses may be different if you have choosen mac different to yes (or 1). asssuming default percentage: 80.%%break%%"
+    parameterwarning+=$whatmsg
+    parameterwarning+=$breken
     macdiffpercent=80
+
     if (( DebugLevel > 0 )); then
-      echo "[Warning]macdiffpercent (-t) can only contain numbers between 1 and 100 (percent). With this parameter you can control how many Mac adresses may be different if you have choosen mac different to yes (or 1). asssuming default percentage: 80%" >> ${arpmonitorlog}
+      WriteLog 1 "$whatmsg" 0 Yellow
     fi
   fi
 else
   if (( DebugLevel > 0 )); then
-    echo "macdiffpercent (-t) is not needed since there is a zero tolerance on invalid Mac adresses through parameter (-f)" >> ${arpmonitorlog}
+    whatmsg="macdiffpercent (-t) is not needed since there is a zero tolerance on invalid Mac adresses through parameter (-f)"
+    WriteLog 1 "$whatmsg" 0 Green
   fi
 fi
 
 ## How much time do we give for the machine to gracefully Shutdown? (in seconds)
 #
 if ! [[ "$gracefultime" =~ ^[0-9]+$ ]]; then
-  parameterwarning+="gracefultime (-g) can only contain numbers. Here you can specify how long we will wait to give an ulitimate shutdown after the gracefully shutdown, minimum: 120 seconds (2 Minutes), we will asume 600 seconds (10 Minutes.%%break%%"
+  whatmsg="gracefultime (-g) can only contain numbers. Here you can specify how long we will wait to give an ulitimate shutdown after the gracefully shutdown, minimum: 120 seconds (2 Minutes), we will asume 600 seconds (10 Minutes)"
+  parameterwarning+=$whatmsg
+  parameterwarning+=$breken
   gracefultime=600
+
   if (( DebugLevel > 0 )); then
-    echo "[Warning]gracefultime (-g) can only contain numbers. Here you can specify how long we will wait to give an ulitimate shutdown after the gracefully shutdown, minimum: 120 seconds (2 Minutes), we will asume 600 seconds (10 Minutes)" >> ${arpmonitorlog}
+    WriteLog 1 "$whatmsg" 0 Yellow
   fi
 elif (( gracefultime < 120 )); then
-  parameterwarning+="gracefultime (-g) has a minimum of 120 seconds waiting time (2 minutes), Assuming the minimal value: 120 seconds.%%break%%"
+  whatmsg="gracefultime (-g) has a minimum of 120 seconds waiting time (2 minutes), Assuming the minimal value: 120 seconds."
+  parameterwarning+=$whatmsg
+  parameterwarning+=$breken
   gracefultime=120
+
   if (( DebugLevel > 0 )); then
-    echo "[Warning]gracefultime (-g) has a minimum of 120 seconds waiting time (2 minutes), Assuming the minimal value: 120 seconds." >> ${arpmonitorlog}
+    WriteLog 1 "$whatmsg" 0 Yellow
   fi
 fi
 
@@ -405,7 +548,7 @@ fi
 
 SCANiprange="${iprange}/24"
 
-echo "SCan IP Range: $SCANiprange"
+echo "Scan IP Range: $SCANiprange"
 
 ## Get the initial Mac adresses of the network (Only Once and save it)
 #
