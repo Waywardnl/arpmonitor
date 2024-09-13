@@ -1,8 +1,11 @@
 #!/usr/local/bin/bash
 
-arpmonitorlog="arp_error.log"
+## You need to install the following package to execute this file succesfully
+##
+## pkg install arp-scan
+## pkg install ipcalc
 
-while getopts i:e:c:u:m:l:v:d:p:f:t:g:o:h:r: flag
+while getopts i:e:c:u:m:l:v:d:p:f:t:g:o:h:r:s: flag
 do
     case "${flag}" in
         i) initialarp=${OPTARG};;
@@ -20,8 +23,11 @@ do
         o) maxloops=${OPTARG};;
         h) homedir=${OPTARG};;
         r) iprange=${OPTARG};;
+        s) ipsubnet=${OPTARG};;
     esac
 done
+
+#echo $minpercentage
 
 ## Debugging
 #
@@ -30,6 +36,10 @@ done
 #echo "IPRange: $iprange";
 
 #exit;
+
+## Fallback log
+#
+fallbackarpmonitorlog="arp_fallback.log"
 
 ## Colors for echo output
 #
@@ -46,11 +56,14 @@ kleur[Black]='\033[0;30m'        # Black
 kleur[Red]='\033[0;31m'          # Red
 kleur[LightRed]='\033[1;31m'     # Light Red
 kleur[Green]='\033[0;32m'        # Green
+kleur[LightYellow]='\033[1;33m'  # Light Yellow
 kleur[Yellow]='\033[0;33m'       # Yellow
 kleur[Blue]='\033[0;34m'         # Blue
+kleur[LightBlue]='\033[1;34m'    # Light Blue
 kleur[Purple]='\033[0;35m'       # Purple
 kleur[Cyan]='\033[0;36m'         # Cyan
-kleur[White]='\033[0;37m'        # White
+kleur[LightGray]='\033[0;37m'    # Light Gray
+kleur[White]='\033[1;37m'        # White
 kleur[DarkGray]='\033[1;30m'     # Dark Gray
 
 # Background
@@ -65,7 +78,7 @@ kleur[OnWhite]='\033[47m'       # White
 
 ## What do we use to break the line in a big BIG $tring?
 #
-breken="%%break%%"
+breken="|"
 
 ## Function to write log files
 #
@@ -95,11 +108,11 @@ function WriteLog()
      ## in front of the log entry
      #
      if [ -n "$5" ]; then
-       if [ "$5" = "[E]" ]; then
+       if [ "$5" = "E" ]; then
          prefix="[Error]"
-       elif [ "$5" = "[W]" ]; then
+       elif [ "$5" = "W" ]; then
          prefix="[Warning]"
-       elif [ "$5" = "[I]" ]; then
+       elif [ "$5" = "I" ]; then
          prefix="[Info]"
        else
          prefix=""
@@ -126,7 +139,19 @@ function WriteLog()
      if (( $1 > 0 )); then
           ## Add an entry to the log file
           #
-          echo $LOGmsg >> "${arpmonitorlog}"
+          if [ -n "$arpmonitorlog" ]; then
+            echo $LOGmsg >> "${arpmonitorlog}"
+          else
+            ## Arp monitor log file is empty, using faalback log
+            #
+            fallbackmsg="${kleur[Red]}Monitor log is not filled, using fallback log file: "
+            fallbackmsg+="${kleur[Cyan]}${fallbackarpmonitorlog}"
+            fallbackmsg+=" - "
+            fallbackmsg+="${kleur[LightGray]}${LOGmsg}${kleur[Color_Off]}"
+
+            echo -e "${fallbackmsg}"
+            echo $LOGmsg >> "${fallbackarpmonitorlog}"
+          fi
      fi
 
      ## If $3 Greater than 0 then print to COnsole (Write-Host)
@@ -211,39 +236,39 @@ else
     WriteLog 1 "$whatmsg" 0 Red [E]
   fi
   if [ "$initialdedup" = "" ]; then
-    whatmsg="[Error] initialdedup (-e) is not filled in, This is needed to place the file with unique entry's by arp-scan."
+    whatmsg="initialdedup (-e) is not filled in, This is needed to place the file with unique entry's by arp-scan."
     parametererror+=$whatmsg
     parametererror+=$breken
     WriteLog 1 "$whatmsg" 0 Red
   fi
   if [ "$chkarp" = "" ]; then
-    whatmsg="[Error]chkarp (-c) is not filled in, This is needed to place the interval arp-scans file."
+    whatmsg="chkarp (-c) is not filled in, This is needed to place the interval arp-scans file."
     parametererror+=$whatmsg
     parametererror+=$breken
     WriteLog 1 "$whatmsg" 0 Red
   fi
   if [ "$chkdeduparp" = "" ]; then
-    whatmsg="[Error]chkdeduparp (-u) is not filled in, This is needed to place the interval arp-scans file."
+    whatmsg="chkdeduparp (-u) is not filled in, This is needed to place the interval arp-scans file."
     parametererror+=$whatmsg
     parametererror+=$breken
     WriteLog 1 "$whatmsg" 0 Red
   fi
   echo "Aprmonitorlog: ${arpmonitorlog}";
   if [ "${arpmonitorlog}" = "" ]; then
-    whatmsg="[Error]${arpmonitorlog} (-m) is not filled in, This is needed to place the interval arp-scans file."
+    whatmsg="${arpmonitorlog} (-m) is not filled in, This is needed to place the interval arp-scans file."
     parametererror+=$whatmsg
     parametererror+=$breken
     WriteLog 1 "$whatmsg" 0 Red
   fi
   if [ "$parametererror" = "" ]; then
-    whatmsg="If you are running this script under a particular user, you can use homedir (-h yes) to let the file location fill in automaticl."
+    whatmsg="If you are running this script under a particular user, you can use homedir (-h yes) to let the file location fill in automaticly."
     parameterTIP+=$whatmsg
     parameterTIP+=$breken
-    WriteLog 1 "$whatmsg" 0 Red
+    WriteLog 1 "$whatmsg" 0 LightBlue
   fi
 fi
 if [ "$LANinterface" = "" ]; then
-  whatmsg="[Error]LANinterface i(-l) is empty, Please specify the Lan interface you wnat to use for the arp-scan."
+  whatmsg="LANinterface i(-l) is empty, Please specify the Lan interface you wnat to use for the arp-scan."
   parametererror+=$whatmsg
   parametererror+=$breken
   WriteLog 1 "$whatmsg" 0 Red
@@ -281,7 +306,7 @@ if ! [[ "$Interval" =~ ^[0-9]+$ ]]; then
   if (( DebugLevel > 0 )); then
     WriteLog 1 "$whatmsg" 0 Yellow
   fi
-elif (( Interval < 300 )); then
+elif (( Interval < 100 )); then
   whatmsg="[Warning]Interval (-v) has a minimum of 300 seconds waiting time (5 minutes), Assuming the minimal value: 300 seconds."
   parameterwarning+=$whatmsg
   parameterwarning+=$breken
@@ -294,7 +319,7 @@ fi
 ## What is the percentage that should be reachable on IP adresses?
 #
 if ! [[ "$minpercentage" =~ ^[0-9]+$ ]]; then
-  whatmsg="minpercentage (-p) can only contain numbers between 1 and 100 (%percent%). This parameter gives you control when there is a too low percentage of IP adresses and Mac adresses changed. Assuming standard 70.%%break%%"
+  whatmsg="minpercentage (-p) can only contain numbers between 1 and 100 (%percent%). This parameter gives you control when there is a too low percentage of IP adresses and Mac adresses changed. Assuming standard 70."
   parameterwarning+=$whatmsg
   parameterwarning+=$breken
 
@@ -302,7 +327,7 @@ if ! [[ "$minpercentage" =~ ^[0-9]+$ ]]; then
     WriteLog 1 "$whatmsg" 0 Yellow
   fi
   minpercentage=70
-elif (( minpercentage > 0 )) || (( minpercentage < 101 )); then
+elif (( minpercentage < 1 )) || (( minpercentage > 100 )); then
   whatmsg="minpercentage (-p) out of bounce! It can only contain numbers between 1 and 100 (%percent%). This parameter gives you control when there is a too low percentage of IP adresses and Mac adresses changed. Assuming standard 70."
   parameterwarning+=$whatmsg
   parameterwarning+=$breken
@@ -319,12 +344,20 @@ macdifferent="${macdifferent^^}"
 
 if [ "$macdifferent" = "Y" ] || [ "$macdifferent" = "YES" ] || [ "$macdifferent" = "JA" ] || [ "$macdifferent" = "1" ]; then
   whatmsg="User is ok with some Mac adresses to be different (-f). macdifferent=1 --> User also has to define percentage"
-  parameterwarning+=$whatmsg
-  parameterwarning+=$breken
+  parameterTIP+=$whatmsg
+  parameterTIP+=$breken
   if (( DebugLevel > 0 )); then
-    WriteLog 1 "$whatmsg" 0 Yellow
+    WriteLog 1 "$whatmsg" 0 Cyan
   fi
   macdifferent=1
+elif [ "$macdifferent" = "NO" ] || [ "$macdifferent" = "N" ] || [ "$macdifferent" = "NEE" ] || [ "$macdifferent" = "0" ]; then
+  whatmsg="User does not want any differences in Mac Adresses (-f). macdifferent=0 --> User Does NOT have to define Percentage"
+  parameterTIP+=$whatmsg
+  parameterTIP+=$breken
+  if (( DebugLevel > 0 )); then
+    WriteLog 1 "$whatmsg" 0 Green
+  fi
+  macdifferent=0
 else
   whatmsg="No input or invalid input for macdifferent, assuming No (0) zero."
   parameterwarning+=$whatmsg
@@ -389,26 +422,34 @@ fi
 ## What is the maximum of loops this run may run?
 #
 if ! [[ "$maxloops" =~ ^[0-9]+$ ]]; then
-  parameterwarning+="maxloops (-o) can only contain numbers. Here you can specify how many loops this routine can do before it stops with a maximum of 600 times. Assuming default of 336.%%break%%"
+  whatmsg="maxloops (-o) can only contain numbers. Here you can specify how many loops this routine can do before it stops with a maximum of 600 times. Assuming default of 336."
+  parameterwarning+=$whatmsg
+  parameterwarning+=$breken
   maxloops=336
-#  if (( DebugLevel > 0 )); then
-#    echo "maxloops (-o) can only contain numbers. Here you can specify how many loops this routine can do before it stops with a maximum of 600 times. Assuming default of 336."
-#  fi
 elif (( maxloops > 600 )); then
-   parameterwarning+="maxloops (-o) has a maximum of 600 loops, the value is too high, changing it to the maximum of 600.%%break%%"
+   whatmsg="maxloops (-o) has a maximum of 600 loops, the value is too high, changing it to the maximum of 600."
+   parameterwarning+=$whatmsg
+   parameterwarning+=$breken
    maxloops=600
    if (( DebugLevel > 0 )); then
-    echo "[Warning]maxloops (-o) has a maximum of 600 loops, the value is too high, changing it to the maximum of 600." >> ${arpmonitorlog}
+     WriteLog 1 "$whatmsg" 0 Yellow
    fi
 fi
 
-## Debugging
+## Extensive Debugging
 #
-#echo "IPRange if: $iprange";
+if (( DebugLevel > 5 )); then
+  echo "IPRange if: $iprange";
+fi
 
+## Test IP Adress, we assume an error until proven otherwise
+#
+let IPtest=0
 if valid_ip $iprange; then
   ## IP address is ok, now strip the last digit
   #
+  let "IPtest+=1"
+
   ## Split the IP adress up into an array by '.'
   #
   IFS='.'
@@ -416,19 +457,25 @@ if valid_ip $iprange; then
 
   ## Debugging
   #
-  #echo "IPRange: $iprange";
+  if (( DebugLevel > 5 )); then
+    echo "IPRange if: $iprange";
+  fi
 
   for ipcount in "${IPNR[@]}"
   do
     # process "$ipcount"
     if (( DebugLevel > 2 )); then
-       echo "Processing ipcount: $ipcount" >> ${arpmonitorlog}
+       whatmsg="Processing ipcount: ${ipcount}"
+       WriteLog 1 "$whatmsg" 1 Cyan
     fi
   done
   if (( ipcount > 3 )) then
-    parameterwarning+="Entered IP address correct (-r), we will strip the last digit, so we can loop through the possible numbers.%%break%%"
+    whatmsg="Entered IP address correct (-r), we will strip the last digit, so we can loop through the possible numbers."
+    parameterwarning+=$whatmsg
+    parameterwarning+=$breken
+
     if (( DebugLevel > 0 )); then
-      echo "Entered IP address correct (-r), we will strip the last digit, so we can loop through the possible numbers." >> "${arpmonitorlog}"
+      WriteLog 1 "$whatmsg" 1 Green
     fi
     $iprange=${IPNR[0]}
     $iprange+="."
@@ -436,61 +483,153 @@ if valid_ip $iprange; then
     $iprange+="."
     $iprange+=${IPNR[2]}
     $iprange+="."
+
+    let "IPtest+=1"
   fi
 else
-  parameterror+="Invalid IP Address in IPRange (-r). IP adress must be (4 Digits with points as limiters) 1.1.1.0 or 192.168.10.0, please correct the input for the IP Range.%%break%%"
+  whatmsg="Invalid IP Address in IPRange (-r). IP adress must be (4 Digits with points as limiters) 1.1.1.0 or 192.168.10.0, please correct the input for the IP Range."
+  parametererror+=$whatmsg
+  parametererror+=$breken
+  if (( DebugLevel > 0 )); then
+    WriteLog 1 "$whatmsg" 0 Red
+  fi
+  let IPtest=0
+fi
+
+## See if subnet is filled and within specs
+#
+if ! [[ "$ipsubnet" =~ ^[0-9]+$ ]]; then
+  whatmsg="ipsubnet (-s) can only contain numbers. Here you can specify the subnet of the network. Assuming default of 24."
+  parameterwarning+=$whatmsg
+  parameterwarning+=$breken
+  ipsubnet=24
+elif (( ipsubnet > 32 )); then
+   whatmsg="ipsubnet (-s) cannot be higher than 32. Assuming default of 24."
+   parameterwarning+=$whatmsg
+   parameterwarning+=$breken
+   ipsubnet=24
+   if (( DebugLevel > 0 )); then
+     WriteLog 1 "$whatmsg" 0 Yellow
+   fi
+elif (( ipsubnet < 1 )); then
+   whatmsg="ipsubnet (-s) cannot be lower than 1. Setting value to minimum: 1."
+   parameterwarning+=$whatmsg
+   parameterwarning+=$breken
+   ipsubnet=1
+   if (( DebugLevel > 0 )); then
+     WriteLog 1 "$whatmsg" 0 Yellow
+   fi
 fi
 
 ## Check if the needed directory's exists, if not warn the user
 #
 if [ -d "$initialarp" ]; then
-  parametererror+="Directory: $initialarp does NOT exists, please create the directory! option:-.%%break%%"
+  whatmsg="Directory: $initialarp does NOT exists, please create the directory! option:-i."
+  parametererror+=$whatmsg
+  parametererror+=$breken
+
   if (( DebugLevel > 0 )); then
-    echo "[Error]Directory $initialarp does NOT exists, please create the directory! option:-i" >> "${arpmonitorlog}"
+    WriteLog 1 "$whatmsg" 0 Red
   fi
 fi
 if [ -d "$initialdedup" ]; then
-  parametererror+="Directory: $initialdedup does NOT exists, please create the directory! option:-.%%break%%"
+  whatmsg="Directory: $initialdedup does NOT exists, please create the directory! option:-d."
+  parametererror+=$whatmsg
+  parametererror+=$breken
+
   if (( DebugLevel > 0 )); then
-    echo "[Error]Directory $initialdedup does NOT exists, please create the directory! option:-d" >> "${arpmonitorlog}"
-   fi
+    WriteLog 1 "$whatmsg" 0 Red
+  fi
 fi
 if [ -d "$chkarp" ]; then
-  parametererror+="Directory: $chkarp does NOT exists, please create the directory! option:-.%%break%%"
+  whatmsg="Directory: $chkarp does NOT exists, please create the directory! option:-c."
+  parametererror+=$whatmsg
+  parametererror+=$breken
+
   if (( DebugLevel > 0 )); then
-    echo "[Error]Directory $chkarp does NOT exists, please create the directory! option:-c" >> "${arpmonitorlog}"
-   fi
+    WriteLog 1 "$whatmsg" 0 Red
+  fi
 fi
 if [ -d "$chkdeduparp" ]; then
-  parametererror+="Directory: $chkdeduparp does NOT exists, please create the directory! option:-.%%break%%"
+  whatmsg="Directory: $chkdeduparp does NOT exists, please create the directory! option:-u."
+  parametererror+=$whatmsg
+  parametererror+=$breken
+
   if (( DebugLevel > 0 )); then
-    echo "[Error]Directory $chkdeduparp does NOT exists, please create the directory! option:-u" >> "${arpmonitorlog}"
-   fi
+    WriteLog 1 "$whatmsg" 0 Red
+  fi
 fi
 if [ -d "${arpmonitorlog}" ]; then
-  parametererror+="Directory: ${arpmonitorlog} does NOT exists, please create the directory! option:-.%%break%%"
+  whatmsg="Directory: ${arpmonitorlog} does NOT exists, please create the directory! option:-m."
+  parametererror+=$whatmsg
+  parametererror+=$breken
+
   if (( DebugLevel > 0 )); then
-    echo "[Error]Directory ${arpmonitorlog} does NOT exists, please create the directory! option:-m" >> "${arpmonitorlog}"
-   fi
+    WriteLog 1 "$whatmsg" 0 Red
+  fi
 fi
 
-if [ "$parametererror" != "" ]; then
+if [ "$parameterwarning" != "" ]; then
+  echo -e "${kleur[Black]}${kleur[OnYellow]}"
   echo "-----------------------------------------------------------"
   echo "Parameter Warnings (Script will execute)"
-  echo "-----------------------------------------------------------"
-  echo $parameterwarning
+  echo -e "-----------------------------------------------------------${kleur[Color_Off]}"
+
+  ## Break Parameter warning in pieces through a symbol "|"
+  #
+  IFS=$breken read -ra WarningLines <<< "$parameterwarning"
+  for warningline in "${WarningLines[@]}"
+    do
+      echo -e "${kleur[Color_Off]}${kleur[Yellow]}${warningline}"
+    done
 fi
 if [ "$parameterTIP" != "" ]; then
+  echo -e "${kleur[Black]}${kleur[OnWhite]}"
   echo "-----------------------------------------------------------"
   echo "Parameter Tips (Script will execute)"
-  echo "-----------------------------------------------------------"
-  echo $parameterTIP
+  echo -e "-----------------------------------------------------------${kleur[Color_Off]}"
+
+  IFS=$breken read -ra TIPLines <<< "$parameterTIP"
+  for TIPLine in "${TIPLines[@]}"
+    do
+      echo -e "${kleur[Color_Off]}${kleur[LightGray]}${TIPLine}"
+    done
+
+  if (( IPtest > 0 )) then
+    echo -e "${kleur[White]}${kleur[OnBlue]}"
+    echo "-----------------------------------------------------------"
+    echo "IP Calculation TIP (Script will execute)"
+    echo -e "-----------------------------------------------------------${kleur[Color_Off]}"
+
+    ## We can calculate the ip adres with the subnet
+    #
+    calcIP=$iprange
+    calcIP+="/"
+    calcIP+=$ipsubnet
+
+    ipcalc "$calcIP"
+
+    whatmsg="ipsubnet (-s) is correct with the value of: ${ipsubnet} "
+    parameterTIP+=$whatmsg
+    parameterTIP+=$breken
+    WriteLog 1 "$whatmsg" 0 LightBlue
+  fi
 fi
 
 if [ "$parametererror" != "" ]; then
+  echo -e "${kleur[White]}${kleur[OnRed]}"
   echo "-----------------------------------------------------------"
-  echo $parametererror
-  echo "-----------------------------------------------------------"
+  echo "Parameter Error (Script will STOP!)"
+  echo -e "-----------------------------------------------------------${kleur[Color_Off]}"
+  #echo $parametererror
+
+  IFS=$breken read -ra ErrorLines <<< "$parametererror"
+  for ErrorLine in "${ErrorLines[@]}"
+    do
+      echo -e "${kleur[Color_Off]}${kleur[LightRed]}${ErrorLine}"
+    done
+
+  echo -e "${kleur[LightBlue]}-----------------------------------------------------------"
   echo "Parameter errors or parameters missing! Explenation:"
   echo ""
   echo "-h : Homedir       --> This means you will be using the script under a particular user."
@@ -516,6 +655,8 @@ if [ "$parametererror" != "" ]; then
   echo "-g: gracefultime   --> How many seconds does a Virtual Machine get to gracefully shutdown before a hard poweroff is given (in seconds)."
   echo "-o: maxloops       --> The maximum loops this script may run."
   echo "-r: IP Range       --> This is the range of IP adresses (192.168.8.xxx) that the app will scan. Please enter ip like: 10.10.10.0"
+  echo "-s: IP Subnet      --> This is the subnet of the IP Range. Example: /24 = 255.255.255.0 -OR- /17 = 255.255.128.0"
+  echo -e "${kleur[Color_Off]}"
   exit
 fi
 
@@ -534,28 +675,48 @@ echo -e "${kleur[Cyan]} -d: DebugLevel     ${kleur[Purple]} (number) ${kleur[Cya
 echo -e "${kleur[Cyan]} -p: minpercentage  ${kleur[Purple]} (number) ${kleur[Cyan]}: $minpercentage"
 echo -e "${kleur[Cyan]} -----------------------------------------------------------"
 echo -e "${kleur[Cyan]} -f: macdifferent   ${kleur[Purple]} (bolean) ${kleur[Cyan]}: $macdifferent"
-echo -e "${kleur[Cyan]} -t: macdiffpercent ${kleur[Purple]} (number) ${kleur[Cyan]}: $macdiffpercent"
+
+if (( macdifferent < 1 )); then
+  echo -e "${kleur[Cyan]} -t: macdiffpercent ${kleur[Purple]} (number) ${kleur[DarkGray]}: Not Needed"
+else
+  echo -e "${kleur[Cyan]} -t: macdiffpercent ${kleur[Purple]} (number) ${kleur[Cyan]}: $macdiffpercent"
+fi
+
 echo -e "${kleur[Cyan]} -----------------------------------------------------------"
 echo -e "${kleur[Cyan]} -g: gracefultime   ${kleur[Purple]} (seconds)${kleur[Cyan]}: $gracefultime"
 echo -e "${kleur[Cyan]} -o: maxloops       ${kleur[Purple]} (number) ${kleur[Cyan]}: $maxloops"
 echo -e "${kleur[Cyan]} -r: IP Range       ${kleur[Purple]} (number) ${kleur[Cyan]}: $iprange"
-
+echo -e "${kleur[Cyan]} -s: IP Subnet      ${kleur[Purple]} (number) ${kleur[Cyan]}: $ipsubnet"
 #exit;
 
 if (( DebugLevel > 0 )); then
-  echo "Start the Arp Monitor routine, first do a initial arp-scan" >> "${arpmonitorlog}"
+  whatmsg="Start the Arp Monitor routine, first do a initial arp-scan"
+  WriteLog 1 "$whatmsg" 0 LightBlue
 fi
 
-SCANiprange="${iprange}/24"
+## Make the scan parameter compete with IP Subnet
+#
+SCANiprange="${iprange}/${ipsubnet}"
 
-echo "Scan IP Range: $SCANiprange"
+## Print IP Range and print it to the screen and Log file
+#
+if (( DebugLevel > 0 )); then
+  whatmsg="Scan IP Range: $SCANiprange --> Dump result to file: $initialarp"
+  WriteLog 1 "$whatmsg" 1 LightBlue
+fi
 
 ## Get the initial Mac adresses of the network (Only Once and save it)
 #
 arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|' "${SCANiprange}" > "${initialarp}"
 
 if (( DebugLevel > 0 )); then
-  echo "Remove the possible double entry;s from the initial ARP Scan" > "${arpmonitorlog}"
+  whatmsg="Remove the possible double entry's from the initial ARP Scan"
+  WriteLog 1 "$whatmsg" 0 LightBlue
+fi
+
+if (( DebugLevel > 0 )); then
+  whatmsg="Start the Arp Monitor routine, first do a initial arp-scan"
+  WriteLog 1 "$whatmsg" 0 LightBlue
 fi
 
 ## Insert the arp initial file into an array, and break each line with WhiteSpace
@@ -568,7 +729,8 @@ count=0
 initialduplicates=0
 
 if (( DebugLevel > 0 )); then
-  echo "## Deduplication of initial Arp-scan results" >> "${arpmonitorlog}"
+  whatmsg="## Deduplication of initial Arp-scan results"
+  WriteLog 1 "$whatmsg" 0 LightBlue
 fi
 
 ## Start a new initial De-Duplication File
@@ -590,13 +752,15 @@ do
     ## Debug purposes
     #
     if (( DebugLevel > 2 )); then
-      echo "Remember: $remember --> $initialline --> $tellen" >> "${arpmonitorlog}"
+      whatmsg="Remember: $remember --> $initialline --> $tellen"
+      WriteLog 1 "$whatmsg" 0 LightBlue
     fi
 
     if [ "$remember" = "$initialline" ]; then
       let found=1
       if (( DebugLevel > 1 )); then
-        echo "## Found a duplicate line: $initialline #########################" >> "${arpmonitorlog}"
+        whatmsg="## Found a duplicate line: $initialline --> Deduplicate"
+        WriteLog 1 "$whatmsg" 0 LightBlue
       fi
     fi
     let tellen=tellen+1
@@ -620,6 +784,9 @@ do
 done
 initialcount=$count
 
+## Here is the endless loop with a maximum, here we will check the IP adresses
+## and Mac adresses of the network and will make a check on the two lists
+#
 let endless=0
 while [ $endless -lt $maxloops ]; do
         if (( DebugLevel > 0 )); then
@@ -638,8 +805,10 @@ while [ $endless -lt $maxloops ]; do
            IFS='|' read -ra INITIALADDR <<< "$initialline"
 
            if (( DebugLevel > 1 )); then
-                 echo "initial IP:  ${INITIALADDR[1]} - count: $count" >> "${arpmonitorlog}"
-                 echo "initial Mac: ${INITIALADDR[2]} - count: $count" >> "${arpmonitorlog}"
+                 whatmsg="initial IP:  ${INITIALADDR[1]} - count: $count"
+                 WriteLog 1 "$whatmsg" 0 LightBlue
+                 whatmsg="initial Mac: ${INITIALADDR[2]} - count: $count"
+                 WriteLog 1 "$whatmsg" 0 LightBlue
            fi
 
            InitialIP[$count]=${INITIALADDR[1]}
@@ -651,12 +820,16 @@ while [ $endless -lt $maxloops ]; do
                   #
                   countfilledlines=$((countfilledlines + 1))
                   if (( DebugLevel > 0 )); then
-                        echo "Filled InitialIP counted: ${InitialIP[$count]} - ${InitialMac[$count]}" >> "${arpmonitorlog}"
+                        whatmsg="Filled InitialIP counted: ${InitialIP[$count]} - ${InitialMac[$count]}"
+                        WriteLog 1 "$whatmsg" 0 LightBlue
                   fi
+
            fi
 
-           #echo "Initial IP: ${InitialIP[$count]}"
-           #echo "Initial Mac: ${InitialMac[$count]}"
+           if (( DebugLevel > 5 )); then
+             echo "Initial IP: ${InitialIP[$count]}"
+             echo "Initial Mac: ${InitialMac[$count]}"
+           fi
 
            count=$((count + 1))
         done
@@ -664,8 +837,10 @@ while [ $endless -lt $maxloops ]; do
         ## Sleep before doing checkups
         #
         if (( DebugLevel > 0 )); then
-          echo "Sleeping $iNTERVAL BEFORE NEXT INTERVAL CHECK...." >> "${arpmonitorlog}"
+          whatmsg="Sleeping $Interval seconds before next interval check...."
+          WriteLog 1 "$whatmsg" 1 LightBlue
         fi
+
         sleep $Interval
 
         arp-scan -I $LANinterface --rtt --format='|${ip;-15}|${mac}|' "${SCANiprange}" > "${chkarp}"
@@ -678,7 +853,10 @@ while [ $endless -lt $maxloops ]; do
         #
         count=0
         chkduplicates=0
-        echo "## Deduplication of Returning Arp-scan results" >> "${arpmonitorlog}"
+        if (( DebugLevel > 0 )); then
+          whatmsg="## Deduplication of Returning Arp-scan results"
+          WriteLog 1 "$whatmsg" 0 LightBlue
+        fi
 
         ## Write the first line of the interval deduplication file
         #
@@ -699,14 +877,16 @@ while [ $endless -lt $maxloops ]; do
 
                 ## Debug purposes
                 #
-                if (( DebugLevel > 1 )); then
-                  echo "Remember: $remember --> $initialline --> $tellen"  >> "${arpmonitorlog}"
+                if (( DebugLevel > 2 )); then
+                  whatmsg="Remember: $remember --> $initialline --> $tellen"
+                  WriteLog 1 "$whatmsg" 0 LightBlue
                 fi
 
                 if [ "$remember" = "$chkline" ]; then
                   let found=1
                   if (( DebugLevel > 0 )); then
-                        echo "## Found a duplicate line: $chkline #########################" >> "${arpmonitorlog}"
+                        whatmsg="## Found a duplicate line: $chkline, Let's Dedupe IT! ($chkduplicates)"
+                        WriteLog 1 "$whatmsg" 0 LightBlue
                   fi
                 fi
                 let tellen=tellen+1
@@ -721,7 +901,11 @@ while [ $endless -lt $maxloops ]; do
                 chkduplicates=$((chkduplicates + 1))
           fi
           count=$((count + 1))
-          #sleep 1
+        if (( DebugLevel > 5 )); then
+            whatmsg="Sleeping for Debug purpuses...."
+            WriteLog 1 "$whatmsg" 0 LightBlue
+            sleep 1
+          fi
         done
 
         ## Read the deduplicated file
@@ -731,7 +915,8 @@ while [ $endless -lt $maxloops ]; do
         ## Debug purpeses, see all the lines
         #
         if (( DebugLevel > 2 )); then
-          echo "${lines[@]}"
+          whatmsg="${lines[@]}"
+          WriteLog 1 "$whatmsg" 1 LightBlue
         fi
 
         ## Loop through the lines of interval arp-scan so we can see if the ip adresses and mac adresses still match
@@ -739,12 +924,16 @@ while [ $endless -lt $maxloops ]; do
         let countmacok=0
         let countmactotal=0
         let countmacfault=0
+        let coundIPtotal=0
+        let countIPok=0
+        let countIPfault=0
 
         for chkline in "${chklines[@]}"
         do
            # do whatever on "$chkline" here
            if (( DebugLevel > 2 )); then
-                 echo $chkline >> "${arpmonitorlog}"
+                 whatmsg="CheckLine: $chkline"
+                 WriteLog 1 "$whatmsg" 0 LightBlue
            fi
 
            ## Split the string with delimiter P|pe from string $chkline
@@ -755,149 +944,203 @@ while [ $endless -lt $maxloops ]; do
            chkMac=${CHKADDR[2]}
 
            if (( DebugLevel > 2 )); then
-                 echo $chkIP >> "${arpmonitorlog}"
-                 echo $chkMac >> "${arpmonitorlog}"
+                 whatmsg="CheckIP: $chkIP"
+                 WriteLog 1 "$whatmsg" 0 LightBlue
+                 whatmsg="Check Mac: $chkMac"
+                 WriteLog 1 "$whatmsg" 0 LightBlue
            fi
 
            if [ "$chkIP" != "" ]; then
                  ## Check the IP adresses and Mac adresses with the initial Arp-scan
                  #
                  let tellen=0
+                 coundIPtotal=$((coundIPtotal +1))
+
                  while [ $tellen -lt $count ]; do
                    ## Little less logging may be done, lets regulated it with a parameter
                    #
                    if (( DebugLevel > 2 )); then
-                         echo "Checking IP and Mac against original IP and Mac $tellen (${chkIP} : ${InitialIP[$tellen]} / ${chkMac} : ${InitialMac[$tellen]} " >> "${arpmonitorlog}"
+                         whatmsg="Checking IP and Mac against original IP and Mac $tellen (${chkIP} : ${InitialIP[$tellen]} /
+ ${chkMac} : ${InitialMac[$tellen]} "
+                         WriteLog 1 "$whatmsg" 0 LightBlue
                    fi
 
                    initIP=${InitialIP[$tellen]}
 
                    if [ "$chkIP" = "$initIP" ]; then
-                         if (( DebugLevel > 0 )); then
-                           echo "found $chkIP - $initIP - Checking if Mac adress is correct...." >> "${arpmonitorlog}"
-                         fi
-                         initMac=${InitialMac[$tellen]}
-                         if [ "$chkMac" = "$initMac" ]; then
-                           if (( DebugLevel > 1 )); then
-                                 echo "Mac adress: $chkMac is the same as: $initMac" >> "${arpmonitorlog}"
-                           fi
+                         countIPok=$((countIPok +1))
 
+                         ## Do some logging if requested
+                         #
+                         if (( DebugLevel > 2 )); then
+                           whatmsg="found $chkIP - $initIP - Checking if Mac adress is correct...."
+                           WriteLog 1 "$whatmsg" 0 LightBlue
+                         fi
+
+                         initMac=${InitialMac[$tellen]}
+
+                         if [ "$chkMac" = "$initMac" ]; then
+                          if (( DebugLevel > 2 )); then
+                                 whatmsg="Mac adress: $chkMac is the same as: $initMac"
+                                 WriteLog 1 "$whatmsg" 0 LightBlue
+                           fi
                            countmacok=$((countmacok + 1))
                          else
                            if (( DebugLevel > 1 )); then
-                                 echo "Mac adress: $chkMac is different: $initMac" >> "${arpmonitorlog}"
+                                 whatmsg="Mac adress: $chkMac is different: $initMac"
+                                 WriteLog 1 "$whatmsg" 0 LightBlue
                            fi
+
                            countmacfault=$((countmacfault + 1))
                          fi
                          countmactotal=$((countmactotal + 1))
+                   else
+                         countIPfault=$((countIPfault +1))
                    fi
                    let tellen=tellen+1
                  done
           fi
         done
 
-        echo "Initial ARP count with duplicates: ${initialcount}"
-        echo "CountMac Total: ${countmactotal}"
-        echo "CountMac OK: ${countmacok}"
-        echo "CountMac Fault: ${countmacfault}"
-        echo "Count Filled Lines: ${countfilledlines}"
-        echo "Initial Duplicate lines found: ${initialduplicates}"
-        echo "Re-accuring Duplicates found: ${chkduplicates}"
-
         if (( DebugLevel > 0 )); then
-          echo "Initial ARP count with duplicates: $initialcount" >> "${arpmonitorlog}"
-          echo "CountMac Total: $countmactotal" >> "${arpmonitorlog}"
-          echo "CountMac OK: $countmacok" >> "${arpmonitorlog}"
-          echo "CountMac Fault: $countmacfault" >> "${arpmonitorlog}"
-          echo "Count Filled Lines: $countfilledlines" >> "${arpmonitorlog}"
-          echo "Initial Duplicate lines found: $initialduplicates" >> "${arpmonitorlog}"
-          echo "Re-accuring Duplicates found: $chkduplicates" >> "${arpmonitorlog}"
-        fi
-
-        if (( $countfilledlines < 0 )); then
-          howmanyprocent=$((100*$countmacok/$countfilledlines))
+          prnDEBUG=1
         else
-          howmanyprocent=0
+          prnDEBUG=0
         fi
-        echo "How many percent is missing from the initial arp-scan: ${howmanyprocent}"
-        if (( DebugLevel > 0 )); then
-          echo "How many percent is missing from the initial arp-scan: ${howmanyprocent}" >> "${arpmonitorlog}"
+
+        whatmsg="Initial ARP count with duplicates: ${initialcount}"
+        WriteLog $prnDEBUG "$whatmsg" 1 LightBlue
+
+        whatmsg="CountMac Total: ${countmactotal}"
+        WriteLog $prnDEBUG "$whatmsg" 1 LightBlue
+
+        whatmsg="CountMac OK: ${countmacok}"
+        WriteLog $prnDEBUG "$whatmsg" 1 LightBlue
+
+        whatmsg="CountMac Fault: ${countmacfault}"
+        WriteLog $prnDEBUG "$whatmsg" 1 LightBlue
+
+        whatmsg="Count Filled Lines: ${countfilledlines}"
+        WriteLog $prnDEBUG "$whatmsg" 1 LightBlue
+
+        whatmsg="Initial Duplicate lines found: ${initialduplicates}"
+        WriteLog $prnDEBUG "$whatmsg" 1 LightBlue
+
+        whatmsg="Re-accuring Duplicates found: ${chkduplicates}"
+        WriteLog $prnDEBUG "$whatmsg" 1 LightBlue
+
+        echo "Calculate percentage IP adresses found: countfilledlines: $countfilledlines / "
+        if (( countfilledlines > 0 )); then
+          howmanyprocentIP=$((100*${countIPok}/${coundIPtotal}))
+        else
+          howmanyprocentIP=0
         fi
+
+        echo "Calculate percentage IP adresses found: countfilledlines: $countfilledlines / "
+        if (( countfilledlines > 0 )); then
+          howmanyprocentMAC=$((100*${countmacok}/${countmactotal}))
+        else
+          howmanyprocentMAC=0
+        fi
+
+        whatmsg="How many IP adresses percent is found from the initial arp-scan: ${howmanyprocentIP} (with the interval IP adresses scan)"
+        WriteLog $prnDEBUG "$whatmsg" 1 LightBlue
+
+        whatmsg="How many MAC adresses percent is found from the initial arp-scan: ${howmanyprocentMAC} (with the interval Mac adresses Scan)"
+        WriteLog $prnDEBUG "$whatmsg" 1 LightBlue
 
         ## Check if the percentage is less than the minimum percentage, if it is less take action.
         #
         let takeaction=0
-        if [ $howmanyprocent -lt $minpercentage ]; then
+
+        if [ $howmanyprocentIP -lt $minpercentage ]; then
           ## Less than the minimal percentage is there, take action!
-          if (( DebugLevel > 0 )); then
-                echo "The found ip adres percentage: $howmanyprocent is lower than $minpercentage, take action!" >> "${arpmonitorlog}"
-          fi
+          whatmsg="The found ip adres percentage: $howmanyprocentIP is lower than $minpercentage, take action!"
+          WriteLog $prnDEBUG "$whatmsg" 1 LightRed
 
           let takeaction=1
         else
           ## Within percentage, all is ok!
-          if (( DebugLevel > 0 )); then
-                echo "The found ip adres percentage: $howmanyprocent is higher than $minpercentage, all is well!" >> "${arpmonitorlog}"
-          fi
-          takeaction=0
+          whatmsg="The found ip adres percentage: $howmanyprocentIP is higher than $minpercentage, IP Adresses is well!"
+          WriteLog $prnDEBUG "$whatmsg" 1 Green
+
+          #takeaction=0
+        fi
+        if [ $howmanyprocentMAC -lt $minpercentage ]; then
+          ## Less than the minimal percentage is there, take action!
+          whatmsg="The found correct MAC adres percentage: $howmanyprocentMAC is lower than $minpercentage, take action!"
+          WriteLog $prnDEBUG "$whatmsg" 1 LightRed
+
+          let takeaction=1
+        else
+          ## Within percentage, all is ok!
+          whatmsg="The found MAC adres percentage: $howmanyprocentMAC is higher than $minpercentage, Mac Adresses is well!"
+          WriteLog $prnDEBUG "$whatmsg" 1 Green
+
+          #takeaction=0
         fi
 
         ## Check if an mac adress may change
         #
         if [ $macdifferent -eq 0 ]; then
           ## All mac adresses must be the same on the same ip adressses
-          if (( DebugLevel > 0 )); then
-                echo "All Mac adresses MUST be the same, check if there are faulty MAc adresses" >> "${arpmonitorlog}"
-          fi
+          whatmsg="All Mac adresses MUST be the same, check if there are faulty MAc adresses"
+          WriteLog $prnDEBUG "$whatmsg" 1 LightBlue
 
           if [ $countmacfault -gt 0 ]; then
                 ## There is a problem, an mac adress is different
-                if (( DebugLevel > 0 )); then
-                  echo "Number of faulty mac adresses: $countmacfault, None is the Rule, take action!" >> "${arpmonitorlog}"
-                fi
+                whatmsg="Number of faulty mac adresses: $countmacfault, None is the Rule, take action!"
+                WriteLog $prnDEBUG "$whatmsg" 1 LightRed
 
                 let takeaction=1
           else
-                if (( DebugLevel > 0 )); then
-                  echo "All Mac adresses are the same as the initial readout by arp-scan" >> "${arpmonitorlog}"
-                fi
+                whatmsg="All Mac adresses are the same as the initial readout by arp-scan"
+                WriteLog $prnDEBUG "$whatmsg" 1 Green
           fi
         else
           ## Yes there may be a difference, but how many percent?
           ## $macdiffpercent
           #
           if (( DebugLevel > 0 )); then
-                echo "Not all Mac adresses in the network have to be exactly the same, a minimal percentage is given: $diffprocent" >> "${arpmonitorlog}"
+                whatmsg="Not all Mac adresses in the network have to be exactly the same, a minimal percentage is given: $diffprocent"
+                WriteLog $prnDEBUG "$whatmsg" 1 Cyan
           fi
 
           diffprocent=$((100*$countmacok/$countmactotal))
           if [ $diffprocent -lt $macdiffpercent ]; then
                 ## Less than the minimal percentage is there, take action!
                 if (( DebugLevel > 0 )); then
-                  echo "The Mac pass percentage: $macdiffpercent is lower than $diffprocent, take action!" >> "${arpmonitorlog}"
+                  whatmsg="The Mac pass percentage: $macdiffpercent is lower than $diffprocent, take action!"
+                  WriteLog $prnDEBUG "$whatmsg" 1 Red
                 fi
                 let takeaction=1
           else
                 ## Within percentage, all is ok!
                 if (( DebugLevel > 0 )); then
-                  echo "The Mac pass percentage: $howmanyprocent is higher than $minpercentage, all is well!" >> "${arpmonitorlog}"
+                  whatmsg="The Mac pass percentage: $howmanyprocent is higher than $minpercentage, all is well!"
+                  WriteLog $prnDEBUG "$whatmsg" 1 Green
                 fi
 
-                let takeaction=0
+                #let takeaction=0
           fi
         fi
 
-        echo "Do we need to take action (0 = No / 1 = Yes)? : $takeaction"
+        whatmsg="Do we need to take action (0 = No / 1 = Yes)? : $takeaction"
+        WriteLog $prnDEBUG "$whatmsg" 1 Cyan
+
         if (( takeaction > 0 )); then
           if (( DebugLevel > 0 )); then
-                echo "Do we need to take action (0 = No / 1 = Yes)? : $takeaction --> Yes! we need to take action!" >> "${arpmonitorlog}"
+                whatmsg="Do we need to take action (0 = No / 1 = Yes)? : $takeaction --> Yes! we need to take action!"
+                WriteLog $prnDEBUG "$whatmsg" 1 Yellow
           fi
 
           ## Fill a string to see if there are running Vm's
           #
           RunningVMs=$(VBoxManage list runningvms)
+
           if (( DebugLevel > 0 )); then
-                echo "Found the following machijnes running: $RunningVMs" >> "${arpmonitorlog}"
+                whatmsg="Found the following machines running: $RunningVMs"
+                WriteLog $prnDEBUG "$whatmsg" 1 Cyan
           fi
           if [ "$RunningVMs" != "" ]; then
                 ## Yes the VM for this user is running, make it shutdown gracefully
@@ -914,18 +1157,22 @@ while [ $endless -lt $maxloops ]; do
                 ## First get the machine name the smart way (From the string)
                 #
                 if (( DebugLevel > 1 )); then
-                  echo "Pressing ACPI Powerbutton for Virtual Machine:  $VboxName to gracefully shutdown the machine" >> "${arpmonitorlog}"
+                  whatmsg="Pressing ACPI Powerbutton for Virtual Machine:  $VboxName to gracefully shutdown the machine"
+                  WriteLog $prnDEBUG "$whatmsg" 1 Cyan
                 fi
                 ResultPWRButton=$(VBoxManage controlvm $VboxName acpipowerbutton)
 
                 if (( DebugLevel > 1 )); then
-                  echo "Give time for the Virtual Machine:  $VboxName to gracefully shutdown, sleep for $gracefultime seconds" >> "${arpmonitorlog}"
-                  echo $ResultPWRButton >> "${arpmonitorlog}"
+                  whatmsg="Give time for the Virtual Machine:  $VboxName to gracefully shutdown, sleep for $gracefultime seconds"
+                  WriteLog $prnDEBUG "$whatmsg" 0 Cyan
+                  whattmsg=$ResultPWRButton
+                  WriteLog $prnDEBUG "$whatmsg" 0 Cyan
                 fi
                 sleep $gracefultime
 
                 if (( DebugLevel > 1 )); then
-                  echo "To be fully sure, poweroff the VM : ${VboxName}" >> "${arpmonitorlog}"
+                  whatmsg="To be fully sure, poweroff the VM : ${VboxName}"
+                  WriteLog $prnDEBUG "$whatmsg" 0 Cyan
                 fi
                 ResultPowerOFF=$(VBoxManage controlvm $VboxName poweroff)
 
@@ -933,23 +1180,28 @@ while [ $endless -lt $maxloops ]; do
                 #
                 let endless=endless+1000
                 if (( DebugLevel > 1 )); then
-                  echo "VM has been shut down" >> "${arpmonitorlog}"
-                  echo $ResultPowerOFF >> "${arpmonitorlog}"
+                  whatmsg="VM has been shut down"
+                  WriteLog $prnDEBUG "$whatmsg" 0 Cyan
+                  whatmsg=$ResultPowerOFF
+                  WriteLog $prnDEBUG "$whatmsg" 0 Cyan
                 fi
           else
                 if (( DebugLevel > 0 )); then
-                  echo "There are no Running VM's found, we do not need todo anything" >> "${arpmonitorlog}"
+                  whatmsg="There are no Running VM's found, we do not need todo anything"
+                  WriteLog $prnDEBUG "$whatmsg" 0 Cyan
                 fi
           fi
         else
           if (( DebugLevel > 0 )); then
-                echo "Do we need to take action (0 = No / 1 = Yes)? : $takeaction --> No, no action needed!" >> "${arpmonitorlog}"
+                whatmsg="Do we need to take action (0 = No / 1 = Yes)? : $takeaction --> No, no action needed!"
+                WriteLog $prnDEBUG "$whatmsg" 0 Cyan
           fi
           ## Fill a string to see if there are running Vm's
           #
           RunningVMs=$(VBoxManage list runningvms)
           if (( DebugLevel > 0 )); then
-                echo "Found the following machijnes running: $RunningVMs">> "${arpmonitorlog}"
+                whatmsg="Found the following machijnes running: $RunningVMs"
+                WriteLog $prnDEBUG "$whatmsg" 0 Cyan
           fi
         fi
   let endless=endless+1
