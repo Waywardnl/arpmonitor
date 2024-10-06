@@ -5,7 +5,7 @@
 ## pkg install arp-scan
 ## pkg install ipcalc
 
-while getopts i:e:c:u:m:l:v:d:p:f:t:g:o:h:r:s: flag
+while getopts i:e:c:u:m:l:v:d:p:f:t:g:o:h:r:s:x: flag
 do
     case "${flag}" in
         i) initialarp=${OPTARG};;
@@ -24,6 +24,7 @@ do
         h) homedir=${OPTARG};;
         r) iprange=${OPTARG};;
         s) ipsubnet=${OPTARG};;
+        x) logmaxsize=${OPTARG};;
     esac
 done
 
@@ -124,6 +125,7 @@ function WriteLog()
      ## Get Date Time of this moment in THIS Function
      #
      funcDATUMTijd=$(date +%A-%d-%B-%Y--%T)
+     tarDATUMTijd=$(date +%A-%d-%B-%Y--%H-%M-%S)
 
      ## Fill the message with value 2 from function
      #
@@ -140,9 +142,114 @@ function WriteLog()
           ## Add an entry to the log file
           #
           if [ -n "$arpmonitorlog" ]; then
-            echo $LOGmsg >> "${arpmonitorlog}"
+            ## Write the new entry to the log file
+            ##
+            ## But Lets check the size of the log file first
+            ##
+            file=file.txt
+            actualsize=$(wc -c <"$arpmonitorlog")
+
+            if [ $actualsize -gt $logmaxsize ]; then
+              echo "size is over $logmaxsize bytes" >> "${arpmonitorlog}"
+
+              ziptar=$(echo "$arpmonitorlog" | sed "s/\.log/\(log)_$tarDATUMTijd.tar/g")
+
+              tar --verbose -czf "$ziptar" "$arpmonitorlog"
+
+              LOGmsg=${funcDATUMTijd}
+              LOGmsg+=" --> "
+              LOGmsg+=$prefix
+              LOGmsg+=" "
+              LOGmsg+="Log file rotated and tarred deu to size of Log file exceeded: $logmaxsize bytes."
+              echo $LOGmsg > "${arpmonitorlog}"
+
+              ## We want to leave 3 tar files and remove the older ones
+              #
+              ## Get the path without the filename
+              ##
+              ## https://stackoverflow.com/questions/125281/how-do-i-remove-the-file-suffix-and-path-portion-from-a-path-string-in-bash
+              #
+              rotatedir=$(dirname "${arpmonitorlog}")
+              #rotatedir+="/"
+
+              if (( DebugLevel > 4 )); then
+                 ## Write to the log file
+                 #
+                 whatmsg="Rotate Directory --> $rotatedir"
+                 WriteLog 1 "$whatmsg" 1 Yellow
+               fi
+
+              ## Count number of *.tar Files
+              #
+              teltarfiles=$(find "$rotatedir" -type f -iname "*.tar" | wc -l)
+              if (( teltarfiles > 5 )); then
+                unset -v oldest
+                for file in "$rotatedir"/*.tar; do
+                  [[ -z $oldest || $file -ot $oldest ]] && oldest=$file
+
+                  if (( DebugLevel > 0 )); then
+                    ## Write to the log file
+                    #
+                    whatmsg="Rotate Log --> Handling: $file"
+                    WriteLog 1 "$whatmsg" 1 Yellow
+                  fi
+
+                done
+                if (( DebugLevel > 4 )); then
+                  ## Write to the log file
+                  #
+                  whatmsg="Deleting Oldest (Log) TAR File: $oldest"
+                  WriteLog 1 "$whatmsg" 1 Yellow
+                elif (( DebugLevel > 2 )); then
+                  ## Write to the log file
+                  #
+                  whatmsg="Deleting Oldest (Log) TAR File: $oldest"
+                  WriteLog 1 "$whatmsg" 0 Yellow
+                fi
+                rm "$oldest"
+              fi
+
+              #ls -d -1tr "$rotatedir" | head -n -10 | xargs -d '\n' rm -f
+
+              #number_of_files =5
+              #if [ $number_of_files -gt $limit ]
+              #  then
+              #    # There are more files than the limit
+              #    # So we need to remove the older ones.
+              #    cd files
+              #    ls -t | tail --lines=+$(expr $limit + 1) | xargs -d '\n' rm
+              #fi
+
+              #find "$@" -type f -print0 \
+              #find "$rotatedir" -type f -print0 \
+              #  | xargs -0 stat -t$'%Y\t%n' \
+              #  | sort -rn \
+              #  | awk -F$'\t' 'NR > 4 {print $2}' \
+              #  | while read f; do
+              #  echo rm -v "${f}"
+              #done
+
+              #echo "Rotating (log) Directory: $rotatedir"
+              #find "$rotatedir" -maxdepth 1 -type f | xargs -x ls -t | awk 'NR>5' | xargs -L1 rm
+
+              #find "$rotatedir" -type f -printf '%T@\t%p\n' |
+              #sort -t $'\t' -g |
+              #head -n -3 |
+              #cut -d $'\t' -f 2- |
+              #xargs -r rm
+
+              #find "$rotatedir" -maxdepth 1 -type f -printf '%Ts\t%P\n' \
+              #  | sort -rn \
+              #  | tail -n +6 \
+              #  | cut -f2- \
+              #  | xargs -r r
+            else
+              ## Log rotation not needed, log is usual
+              #
+              echo $LOGmsg >> "${arpmonitorlog}"
+            fi
           else
-            ## Arp monitor log file is empty, using faalback log
+            ## Arp monitor log file is empty, using fallback log
             #
             fallbackmsg="${kleur[Red]}Monitor log is not filled, using fallback log file: "
             fallbackmsg+="${kleur[Cyan]}${fallbackarpmonitorlog}"
@@ -521,10 +628,35 @@ elif (( ipsubnet < 1 )); then
    fi
 fi
 
+## See if the maximum file size of the log file is correctly filled in
+#
+if ! [[ "$logmaxsize" =~ ^[0-9]+$ ]]; then
+  whatmsg="logmaxsize (-x) can only contain numbers. Here you can specify the maximum file size of the arpmonitor log file. Assuming default of 1000000 bytes."
+  parameterwarning+=$whatmsg
+  parameterwarning+=$breken
+  logmaxsize=1000000
+elif (( logmaxsize > 10000000 )); then
+   whatmsg="logmaxsize (-x) cannot be higher than 10 MB. Assuming default of 1000000 bytes."
+   parameterwarning+=$whatmsg
+   parameterwarning+=$breken
+   logmaxsize=1000000
+   if (( DebugLevel > 0 )); then
+     WriteLog 1 "$whatmsg" 0 Yellow
+   fi
+elif (( logmaxsize < 100000  )); then
+   whatmsg="logmaxsize (-x) cannot be lower than 100000 bytes. Setting value to minimum: 100000 bytes."
+   parameterwarning+=$whatmsg
+   parameterwarning+=$breken
+   logmaxsize=100000
+   if (( DebugLevel > 0 )); then
+     WriteLog 1 "$whatmsg" 0 Yellow
+   fi
+fi
+
 ## Check if the needed directory's exists, if not warn the user
 #
 if [ -d "$initialarp" ]; then
-  whatmsg="Directory: $initialarp does NOT exists, please create the directory! option:-i."
+  whatmsg="Directory: $initialarp does NOT exists, please create the directory! (option:-i)."
   parametererror+=$whatmsg
   parametererror+=$breken
 
@@ -533,7 +665,7 @@ if [ -d "$initialarp" ]; then
   fi
 fi
 if [ -d "$initialdedup" ]; then
-  whatmsg="Directory: $initialdedup does NOT exists, please create the directory! option:-d."
+  whatmsg="Directory: $initialdedup does NOT exists, please create the directory! (option:-d)."
   parametererror+=$whatmsg
   parametererror+=$breken
 
@@ -542,7 +674,7 @@ if [ -d "$initialdedup" ]; then
   fi
 fi
 if [ -d "$chkarp" ]; then
-  whatmsg="Directory: $chkarp does NOT exists, please create the directory! option:-c."
+  whatmsg="Directory: $chkarp does NOT exists, please create the directory! (option:-c)."
   parametererror+=$whatmsg
   parametererror+=$breken
 
@@ -551,7 +683,7 @@ if [ -d "$chkarp" ]; then
   fi
 fi
 if [ -d "$chkdeduparp" ]; then
-  whatmsg="Directory: $chkdeduparp does NOT exists, please create the directory! option:-u."
+  whatmsg="Directory: $chkdeduparp does NOT exists, please create the directory! (option:-u)."
   parametererror+=$whatmsg
   parametererror+=$breken
 
@@ -560,7 +692,7 @@ if [ -d "$chkdeduparp" ]; then
   fi
 fi
 if [ -d "${arpmonitorlog}" ]; then
-  whatmsg="Directory: ${arpmonitorlog} does NOT exists, please create the directory! option:-m."
+  whatmsg="Directory: ${arpmonitorlog} does NOT exists, please create the directory! (option:-m)."
   parametererror+=$whatmsg
   parametererror+=$breken
 
@@ -568,6 +700,16 @@ if [ -d "${arpmonitorlog}" ]; then
     WriteLog 1 "$whatmsg" 0 Red
   fi
 fi
+if [ -d "${logmaxsize}" ]; then
+  whatmsg="Directory: ${arpmonitorlog} does NOT exists, please create the directory! (option:-x)."
+  parametererror+=$whatmsg
+  parametererror+=$breken
+
+  if (( DebugLevel > 0 )); then
+    WriteLog 1 "$whatmsg" 0 Red
+  fi
+fi
+
 
 if [ "$parameterwarning" != "" ]; then
   echo -e "${kleur[Black]}${kleur[OnYellow]}"
@@ -641,7 +783,9 @@ if [ "$parametererror" != "" ]; then
   echo "-d: Initialdedup   --> This is the file location of the initial arp-scan (With directory)."
   echo "-c: ChkArp         --> This is the file location of the interval checks of arp-scan go (With directory)."
   echo "-e: Chkdeduparp    --> This is the file location of the deduplicated file of the interval checks of arp-scan go (With directory)."
+  echo "-----------------------------------------------------------"
   echo "-m: Arpmonitorlog  --> This is the file location where the log file goes. (With directory)."
+  echo "-x: Logmaxsize     --> Maximum File size of log file before we make a new log file"
   echo "-----------------------------------------------------------"
   echo "These parameters always need to be filled in:"
   echo "-l: LANinterface   --> Name of the lan interface."
@@ -669,6 +813,10 @@ echo -e "${kleur[Cyan]} -i: Initialarp     ${kleur[Purple]} (file)   ${kleur[Cya
 echo -e "${kleur[Cyan]} -d: Initialdedup   ${kleur[Purple]} (file)   ${kleur[Cyan]}: $initialdedup"
 echo -e "${kleur[Cyan]} -c: ChkArp         ${kleur[Purple]} (file)   ${kleur[Cyan]}: $chkarp"
 echo -e "${kleur[Cyan]} -e: chkdeduparp    ${kleur[Purple]} (file)   ${kleur[Cyan]}: $chkdeduparp"
+echo -e "${kleur[Cyan]} -----------------------------------------------------------"
+echo -e "${kleur[Cyan]} -m: Arpmonitorlog  ${kleur[Purple]} (file)   ${kleur[Cyan]}: $arpmonitorlog"
+echo -e "${kleur[Cyan]} -x: Logmaxsize     ${kleur[Purple]} (number) ${kleur[Cyan]}: $logmaxsize"
+echo -e "${kleur[Cyan]} -----------------------------------------------------------"
 echo -e "${kleur[Cyan]} -l: LANinterface   ${kleur[Purple]} (name)   ${kleur[Cyan]}: $LANinterface"
 echo -e "${kleur[Cyan]} -v: Interval       ${kleur[Purple]} (seconds)${kleur[Cyan]}: $Interval"
 echo -e "${kleur[Cyan]} -d: DebugLevel     ${kleur[Purple]} (number) ${kleur[Cyan]}: $DebugLevel"
