@@ -187,7 +187,12 @@ function WriteLog()
                 for file in "$rotatedir"/*.tar; do
                   [[ -z $oldest || $file -ot $oldest ]] && oldest=$file
 
-                  if (( DebugLevel > 0 )); then
+                  if (( DebugLevel > 2 )); then
+                    ## Write to the log file
+                    #
+                    whatmsg="Rotate Log --> Handling: $file"
+                    WriteLog 1 "$whatmsg" 0 Yellow
+                  elif (( DebugLevel > 4 )); then
                     ## Write to the log file
                     #
                     whatmsg="Rotate Log --> Handling: $file"
