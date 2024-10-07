@@ -5,7 +5,7 @@
 ## pkg install arp-scan
 ## pkg install ipcalc
 
-while getopts i:e:c:u:m:l:v:d:p:f:t:g:o:h:r:s:x: flag
+while getopts i:e:c:u:m:l:v:d:p:f:t:g:o:h:r:s:x:n: flag
 do
     case "${flag}" in
         i) initialarp=${OPTARG};;
@@ -25,10 +25,11 @@ do
         r) iprange=${OPTARG};;
         s) ipsubnet=${OPTARG};;
         x) logmaxsize=${OPTARG};;
+        n) numberinstances=${OPTARG};;
     esac
 done
 
-#echo $minpercentage
+echo "Number of instances: $numberinstances"
 
 ## Debugging
 #
@@ -183,6 +184,9 @@ function WriteLog()
               #
               teltarfiles=$(find "$rotatedir" -type f -iname "*.tar" | wc -l)
               if (( teltarfiles > 5 )); then
+
+                ## https://mywiki.wooledge.org/BashFAQ/003
+                #
                 unset -v oldest
                 for file in "$rotatedir"/*.tar; do
                   [[ -z $oldest || $file -ot $oldest ]] && oldest=$file
@@ -214,44 +218,6 @@ function WriteLog()
                 rm "$oldest"
               fi
 
-              #ls -d -1tr "$rotatedir" | head -n -10 | xargs -d '\n' rm -f
-
-              #number_of_files =5
-              #if [ $number_of_files -gt $limit ]
-              #  then
-              #    # There are more files than the limit
-              #    # So we need to remove the older ones.
-              #    cd files
-              #    ls -t | tail --lines=+$(expr $limit + 1) | xargs -d '\n' rm
-              #fi
-
-              #find "$@" -type f -print0 \
-              #find "$rotatedir" -type f -print0 \
-              #  | xargs -0 stat -t$'%Y\t%n' \
-              #  | sort -rn \
-              #  | awk -F$'\t' 'NR > 4 {print $2}' \
-              #  | while read f; do
-              #  echo rm -v "${f}"
-              #done
-
-              #echo "Rotating (log) Directory: $rotatedir"
-              #find "$rotatedir" -maxdepth 1 -type f | xargs -x ls -t | awk 'NR>5' | xargs -L1 rm
-
-              #find "$rotatedir" -type f -printf '%T@\t%p\n' |
-              #sort -t $'\t' -g |
-              #head -n -3 |
-              #cut -d $'\t' -f 2- |
-              #xargs -r rm
-
-              #find "$rotatedir" -maxdepth 1 -type f -printf '%Ts\t%P\n' \
-              #  | sort -rn \
-              #  | tail -n +6 \
-              #  | cut -f2- \
-              #  | xargs -r r
-            else
-              ## Log rotation not needed, log is usual
-              #
-              echo $LOGmsg >> "${arpmonitorlog}"
             fi
           else
             ## Arp monitor log file is empty, using fallback log
@@ -335,9 +301,9 @@ if [ "$homedir" = "Y" ] || [ "$homedir" = "YES" ] || [ "$homedir" = "JA" ] || [ 
   chkdeduparp+=$gebruiker
   chkdeduparp+="/Data/arpdedupscanning.dat"
 
-  ${arpmonitorlog}="/home/"
-  ${arpmonitorlog}+=$gebruiker
-  ${arpmonitorlog}+="/Log/arpmonitor.log"
+  arpmonitorlog="/home/"
+  arpmonitorlog+=$gebruiker
+  arpmonitorlog+="/Log/arpmonitor.log"
 else
   ## Define Initial ARP result file
   #
@@ -658,6 +624,32 @@ elif (( logmaxsize < 100000  )); then
    fi
 fi
 
+## See if the maximum file size of the log file is correctly filled in
+#
+if ! [[ "$numberinstances" =~ ^[0-9]+$ ]]; then
+  whatmsg="numberinstances (-n) can only contain numbers. Here you can specify how many processes of this script is running. When this number is exceeded, a new instance of this script will
+not start. Assuming maximum instances of two(2)"
+  parameterwarning+=$whatmsg
+  parameterwarning+=$breken
+  numberinstances=2
+elif (( numberinstances > 20 )); then
+   whatmsg="numberinstances (-n) cannot be higher than 20 instances. Assuming default maximum number of instances of 2."
+   parameterwarning+=$whatmsg
+   parameterwarning+=$breken
+   numberinstances=2
+   if (( DebugLevel > 0 )); then
+     WriteLog 1 "$whatmsg" 0 Yellow
+   fi
+elif (( numberinstances < 1  )); then
+   whatmsg="numberinstances (-n) cannot be lower than 1 instance. Setting value to minimum of: 1 instance(s)."
+   parameterwarning+=$whatmsg
+   parameterwarning+=$breken
+   numberinstances=1
+   if (( DebugLevel > 0 )); then
+     WriteLog 1 "$whatmsg" 0 Yellow
+   fi
+fi
+
 ## Check if the needed directory's exists, if not warn the user
 #
 if [ -d "$initialarp" ]; then
@@ -714,7 +706,6 @@ if [ -d "${logmaxsize}" ]; then
     WriteLog 1 "$whatmsg" 0 Red
   fi
 fi
-
 
 if [ "$parameterwarning" != "" ]; then
   echo -e "${kleur[Black]}${kleur[OnYellow]}"
@@ -784,27 +775,30 @@ if [ "$parametererror" != "" ]; then
   echo "-----------------------------------------------------------"
   echo "These parameters need to be filled in when (-h) Homedir is not used:"
   echo ""
-  echo "-i: Initialarp     --> This is the file location of the initial arp-scan (With directory)."
-  echo "-d: Initialdedup   --> This is the file location of the initial arp-scan (With directory)."
-  echo "-c: ChkArp         --> This is the file location of the interval checks of arp-scan go (With directory)."
-  echo "-e: Chkdeduparp    --> This is the file location of the deduplicated file of the interval checks of arp-scan go (With directory)."
+  echo "-i: Initialarp      --> This is the file location of the initial arp-scan (With directory)."
+  echo "-d: Initialdedup    --> This is the file location of the initial arp-scan (With directory)."
+  echo "-c: ChkArp          --> This is the file location of the interval checks of arp-scan go (With directory)."
+  echo "-e: Chkdeduparp     --> This is the file location of the deduplicated file of the interval checks of arp-scan go (With directory)."
   echo "-----------------------------------------------------------"
-  echo "-m: Arpmonitorlog  --> This is the file location where the log file goes. (With directory)."
-  echo "-x: Logmaxsize     --> Maximum File size of log file before we make a new log file"
+  echo "-m: Arpmonitorlog   --> This is the file location where the log file goes. (With directory)."
+  echo "-x: Logmaxsize      --> Maximum File size of log file before we make a new log file"
   echo "-----------------------------------------------------------"
   echo "These parameters always need to be filled in:"
-  echo "-l: LANinterface   --> Name of the lan interface."
-  echo "-v: Interval       --> The time the script has to wait before doing another arp-scan in seconds."
-  echo "-d: DebugLevel     --> how much logging must be done to the logging file (0/1/2/3)"
-  echo "-p: minpercentage  --> Minimal percentage that has too be the same Mac and Ip adress as the initial scan"
   echo "-----------------------------------------------------------"
-  echo "-f: macdifferent   --> Must every Mac-adress be the same, or do we handle the check in a percentage?"
-  echo "-t: macdiffpercent --> If you have used parameter (-f YES) then you need to fill in a percentage to determine how many mac adresses may be different."
+  echo "-l: LANinterface    --> Name of the lan interface."
+  echo "-v: Interval        --> The time the script has to wait before doing another arp-scan in seconds."
+  echo "-d: DebugLevel      --> how much logging must be done to the logging file (0/1/2/3)"
+  echo "-p: minpercentage   --> Minimal percentage that has too be the same Mac and Ip adress as the initial scan"
   echo "-----------------------------------------------------------"
-  echo "-g: gracefultime   --> How many seconds does a Virtual Machine get to gracefully shutdown before a hard poweroff is given (in seconds)."
-  echo "-o: maxloops       --> The maximum loops this script may run."
-  echo "-r: IP Range       --> This is the range of IP adresses (192.168.8.xxx) that the app will scan. Please enter ip like: 10.10.10.0"
-  echo "-s: IP Subnet      --> This is the subnet of the IP Range. Example: /24 = 255.255.255.0 -OR- /17 = 255.255.128.0"
+  echo "-f: macdifferent    --> Must every Mac-adress be the same, or do we handle the check in a percentage?"
+  echo "-t: macdiffpercent  --> If you have used parameter (-f YES) then you need to fill in a percentage to determine how many mac adresses may be different."
+  echo "-----------------------------------------------------------"
+  echo "-g: gracefultime    --> How many seconds does a Virtual Machine get to gracefully shutdown before a hard poweroff is given (in seconds)."
+  echo "-o: maxloops        --> The maximum loops this script may run."
+  echo "-r: IP Range        --> This is the range of IP adresses (192.168.8.xxx) that the app will scan. Please enter ip like: 10.10.10.0"
+  echo "-s: IP Subnet       --> This is the subnet of the IP Range. Example: /24 = 255.255.255.0 -OR- /17 = 255.255.128.0"
+  echo "-----------------------------------------------------------"
+  echo "-n: numberinstances --> Maximum number of instances running of this script under this user"
   echo -e "${kleur[Color_Off]}"
   exit
 fi
@@ -814,33 +808,34 @@ fi
 echo -e "${kleur[Cyan]} -----------------------------------------------------------"
 echo -e "${kleur[Cyan]} Received following parameters"
 echo -e "${kleur[Cyan]} -----------------------------------------------------------"
-echo -e "${kleur[Cyan]} -i: Initialarp     ${kleur[Purple]} (file)   ${kleur[Cyan]}: $initialarp"
-echo -e "${kleur[Cyan]} -d: Initialdedup   ${kleur[Purple]} (file)   ${kleur[Cyan]}: $initialdedup"
-echo -e "${kleur[Cyan]} -c: ChkArp         ${kleur[Purple]} (file)   ${kleur[Cyan]}: $chkarp"
-echo -e "${kleur[Cyan]} -e: chkdeduparp    ${kleur[Purple]} (file)   ${kleur[Cyan]}: $chkdeduparp"
+echo -e "${kleur[Cyan]} -i: Initialarp      ${kleur[Purple]} (file)   ${kleur[Cyan]}: $initialarp"
+echo -e "${kleur[Cyan]} -d: Initialdedup    ${kleur[Purple]} (file)   ${kleur[Cyan]}: $initialdedup"
+echo -e "${kleur[Cyan]} -c: ChkArp          ${kleur[Purple]} (file)   ${kleur[Cyan]}: $chkarp"
+echo -e "${kleur[Cyan]} -e: chkdeduparp     ${kleur[Purple]} (file)   ${kleur[Cyan]}: $chkdeduparp"
 echo -e "${kleur[Cyan]} -----------------------------------------------------------"
-echo -e "${kleur[Cyan]} -m: Arpmonitorlog  ${kleur[Purple]} (file)   ${kleur[Cyan]}: $arpmonitorlog"
-echo -e "${kleur[Cyan]} -x: Logmaxsize     ${kleur[Purple]} (number) ${kleur[Cyan]}: $logmaxsize"
+echo -e "${kleur[Cyan]} -m: Arpmonitorlog   ${kleur[Purple]} (file)   ${kleur[Cyan]}: $arpmonitorlog"
+echo -e "${kleur[Cyan]} -x: Logmaxsize      ${kleur[Purple]} (number) ${kleur[Cyan]}: $logmaxsize"
 echo -e "${kleur[Cyan]} -----------------------------------------------------------"
-echo -e "${kleur[Cyan]} -l: LANinterface   ${kleur[Purple]} (name)   ${kleur[Cyan]}: $LANinterface"
-echo -e "${kleur[Cyan]} -v: Interval       ${kleur[Purple]} (seconds)${kleur[Cyan]}: $Interval"
-echo -e "${kleur[Cyan]} -d: DebugLevel     ${kleur[Purple]} (number) ${kleur[Cyan]}: $DebugLevel"
-echo -e "${kleur[Cyan]} -p: minpercentage  ${kleur[Purple]} (number) ${kleur[Cyan]}: $minpercentage"
+echo -e "${kleur[Cyan]} -l: LANinterface    ${kleur[Purple]} (name)   ${kleur[Cyan]}: $LANinterface"
+echo -e "${kleur[Cyan]} -v: Interval        ${kleur[Purple]} (seconds)${kleur[Cyan]}: $Interval"
+echo -e "${kleur[Cyan]} -d: DebugLevel      ${kleur[Purple]} (number) ${kleur[Cyan]}: $DebugLevel"
+echo -e "${kleur[Cyan]} -p: minpercentage   ${kleur[Purple]} (number) ${kleur[Cyan]}: $minpercentage"
 echo -e "${kleur[Cyan]} -----------------------------------------------------------"
-echo -e "${kleur[Cyan]} -f: macdifferent   ${kleur[Purple]} (bolean) ${kleur[Cyan]}: $macdifferent"
+echo -e "${kleur[Cyan]} -f: macdifferent    ${kleur[Purple]} (bolean) ${kleur[Cyan]}: $macdifferent"
 
 if (( macdifferent < 1 )); then
-  echo -e "${kleur[Cyan]} -t: macdiffpercent ${kleur[Purple]} (number) ${kleur[DarkGray]}: Not Needed"
+  echo -e "${kleur[Cyan]} -t: macdiffpercent  ${kleur[Purple]} (number) ${kleur[DarkGray]}: Not Needed"
 else
-  echo -e "${kleur[Cyan]} -t: macdiffpercent ${kleur[Purple]} (number) ${kleur[Cyan]}: $macdiffpercent"
+  echo -e "${kleur[Cyan]} -t: macdiffpercent  ${kleur[Purple]} (number) ${kleur[Cyan]}: $macdiffpercent"
 fi
 
 echo -e "${kleur[Cyan]} -----------------------------------------------------------"
-echo -e "${kleur[Cyan]} -g: gracefultime   ${kleur[Purple]} (seconds)${kleur[Cyan]}: $gracefultime"
-echo -e "${kleur[Cyan]} -o: maxloops       ${kleur[Purple]} (number) ${kleur[Cyan]}: $maxloops"
-echo -e "${kleur[Cyan]} -r: IP Range       ${kleur[Purple]} (number) ${kleur[Cyan]}: $iprange"
-echo -e "${kleur[Cyan]} -s: IP Subnet      ${kleur[Purple]} (number) ${kleur[Cyan]}: $ipsubnet"
-#exit;
+echo -e "${kleur[Cyan]} -g: gracefultime    ${kleur[Purple]} (seconds)${kleur[Cyan]}: $gracefultime"
+echo -e "${kleur[Cyan]} -o: maxloops        ${kleur[Purple]} (number) ${kleur[Cyan]}: $maxloops"
+echo -e "${kleur[Cyan]} -r: IP Range        ${kleur[Purple]} (number) ${kleur[Cyan]}: $iprange"
+echo -e "${kleur[Cyan]} -s: IP Subnet       ${kleur[Purple]} (number) ${kleur[Cyan]}: $ipsubnet"
+echo -e "${kleur[Cyan]} -----------------------------------------------------------"
+echo -e "${kleur[Cyan]} -n: numberinstances ${kleur[Purple]} (number) ${kleur[Cyan]}: $numberinstances"
 
 if (( DebugLevel > 0 )); then
   whatmsg="Start the Arp Monitor routine, first do a initial arp-scan"
