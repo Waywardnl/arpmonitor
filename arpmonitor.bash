@@ -29,7 +29,7 @@ do
     esac
 done
 
-echo "Number of instances: $numberinstances"
+#echo "Number of instances: $numberinstances"
 
 ## Debugging
 #
@@ -163,12 +163,13 @@ function WriteLog()
               LOGmsg+=" "
               LOGmsg+="Log file rotated and tarred deu to size of Log file exceeded: $logmaxsize bytes."
               echo $LOGmsg > "${arpmonitorlog}"
-
-              ## We want to leave 3 tar files and remove the older ones
+             else
+              ## We want to leave 5 tar files and remove the older ones
               #
               ## Get the path without the filename
               ##
               ## https://stackoverflow.com/questions/125281/how-do-i-remove-the-file-suffix-and-path-portion-from-a-path-string-in-bash
+              ## https://mywiki.wooledge.org/BashFAQ/003
               #
               rotatedir=$(dirname "${arpmonitorlog}")
               #rotatedir+="/"
@@ -177,13 +178,23 @@ function WriteLog()
                  ## Write to the log file
                  #
                  whatmsg="Rotate Directory --> $rotatedir"
-                 WriteLog 1 "$whatmsg" 1 Yellow
+                 echo $whatmsg
                fi
+
+              if (( DebugLevel > 2 )); then
+                whatmsg="Rotate Directory --> $rotatedir"
+                echo $whatmsg >> "${arpmonitorlog}"
+              fi
+
+              #echo ". $rotatedir ."
 
               ## Count number of *.tar Files
               #
               teltarfiles=$(find "$rotatedir" -type f -iname "*.tar" | wc -l)
               if (( teltarfiles > 5 )); then
+                ## Show howmany Tar files have been found
+                #
+                #echo "We counted: $teltarfiles TAR Files"
 
                 ## https://mywiki.wooledge.org/BashFAQ/003
                 #
@@ -191,33 +202,36 @@ function WriteLog()
                 for file in "$rotatedir"/*.tar; do
                   [[ -z $oldest || $file -ot $oldest ]] && oldest=$file
 
+                  #echo "Handling file: $file"
+
                   if (( DebugLevel > 2 )); then
                     ## Write to the log file
                     #
-                    whatmsg="Rotate Log --> Handling: $file"
-                    WriteLog 1 "$whatmsg" 0 Yellow
-                  elif (( DebugLevel > 4 )); then
+                    echo "Rotate Log --> Handling: $file"  >> "${arpmonitorlog}"
+                  fi
+                  if (( DebugLevel > 4 )); then
                     ## Write to the log file
                     #
-                    whatmsg="Rotate Log --> Handling: $file"
-                    WriteLog 1 "$whatmsg" 1 Yellow
+                    echo "Rotate Log --> Handling: $file"
                   fi
 
                 done
+
                 if (( DebugLevel > 4 )); then
                   ## Write to the log file
                   #
                   whatmsg="Deleting Oldest (Log) TAR File: $oldest"
-                  WriteLog 1 "$whatmsg" 1 Yellow
-                elif (( DebugLevel > 2 )); then
+                  echo $whatmsg
+                fi
+                if (( DebugLevel > 2 )); then
                   ## Write to the log file
                   #
                   whatmsg="Deleting Oldest (Log) TAR File: $oldest"
-                  WriteLog 1 "$whatmsg" 0 Yellow
+                  echo $whatmsg  >> "${arpmonitorlog}"
                 fi
                 rm "$oldest"
+                echo "Removed: $oldest"
               fi
-
             fi
           else
             ## Arp monitor log file is empty, using fallback log
@@ -232,7 +246,7 @@ function WriteLog()
           fi
      fi
 
-     ## If $3 Greater than 0 then print to COnsole (Write-Host)
+     ## If $3 Greater than 0 then print to Console (Write-Host)
      #
      if (($3 > 0)); then
          if [ "$4" = "" ]; then
@@ -640,11 +654,18 @@ elif (( numberinstances > 20 )); then
    if (( DebugLevel > 0 )); then
      WriteLog 1 "$whatmsg" 0 Yellow
    fi
-elif (( numberinstances < 1  )); then
-   whatmsg="numberinstances (-n) cannot be lower than 1 instance. Setting value to minimum of: 1 instance(s)."
+elif (( numberinstances == 0  )); then
+   whatmsg="numberinstances (-n) is 0 (zero), instances check is OFF!. This can cause a lot of arpmonitor.bash instances!"
    parameterwarning+=$whatmsg
    parameterwarning+=$breken
-   numberinstances=1
+   if (( DebugLevel > 0 )); then
+     WriteLog 1 "$whatmsg" 0 Yellow
+   fi
+elif (( numberinstances < 0  )); then
+   whatmsg="numberinstances (-n) cannot be lower than 0 instance(s). Setting value to minimum of: 0 instance(s) --> Check is OFF."
+   parameterwarning+=$whatmsg
+   parameterwarning+=$breken
+   numberinstances=0
    if (( DebugLevel > 0 )); then
      WriteLog 1 "$whatmsg" 0 Yellow
    fi
@@ -798,7 +819,7 @@ if [ "$parametererror" != "" ]; then
   echo "-r: IP Range        --> This is the range of IP adresses (192.168.8.xxx) that the app will scan. Please enter ip like: 10.10.10.0"
   echo "-s: IP Subnet       --> This is the subnet of the IP Range. Example: /24 = 255.255.255.0 -OR- /17 = 255.255.128.0"
   echo "-----------------------------------------------------------"
-  echo "-n: numberinstances --> Maximum number of instances running of this script under this user"
+  echo "-n: numberinstances --> Maximum number of instances running of this script under the running user (0 = OFF)"
   echo -e "${kleur[Color_Off]}"
   exit
 fi
@@ -835,7 +856,50 @@ echo -e "${kleur[Cyan]} -o: maxloops        ${kleur[Purple]} (number) ${kleur[Cy
 echo -e "${kleur[Cyan]} -r: IP Range        ${kleur[Purple]} (number) ${kleur[Cyan]}: $iprange"
 echo -e "${kleur[Cyan]} -s: IP Subnet       ${kleur[Purple]} (number) ${kleur[Cyan]}: $ipsubnet"
 echo -e "${kleur[Cyan]} -----------------------------------------------------------"
-echo -e "${kleur[Cyan]} -n: numberinstances ${kleur[Purple]} (number) ${kleur[Cyan]}: $numberinstances"
+#echo -e "${kleur[Cyan]} -n: numberinstances ${kleur[Purple]} (number) ${kleur[Cyan]}: $numberinstances"
+
+## Record the number of running processes for arpmonitor.bash
+#
+processen=$(ps -x | grep arpmonitor)
+nrprocess=$(echo "$processen" | wc -l)
+actualprocesses=$nrprocess
+
+if (( actualprocesses < 0 )); then
+  actualprocesses=0
+  if (( DebugLevel > 2 )); then
+    whatmsg="Integer actualprocesses is below 0, set actualprocesses to 0 (zero)"
+    WriteLog 1 "$whatmsg" 1 LightBlue
+  fi
+fi
+
+if (( numberinstances > 0 )); then
+  ## Number of instances is greater than 0, check how many instances are active of arpmonitor.bash script
+  #
+  echo -e "${kleur[Cyan]} -n: numberinstances ${kleur[Purple]} (number) ${kleur[Cyan]}: $numberinstances ${kleur[DarkGray]} (Running: $actualprocesses)"
+
+  if (( DebugLevel > 2 )); then
+    whatmsg="Check how many instances are running of this script under this user, number: $actualprocesses"
+    WriteLog 1 "$whatmsg" 0 LightBlue
+  fi
+
+  if (( actualprocesses > numberinstances )); then
+    ## To many processes running of arpmonitor.bash, exit the script
+    #
+    whatmsg="Number of running processes of arpmonitor.bash: $actualprocesses is greater than the maximum allowed running processes: $numberinstances"
+    WriteLog 1 "$whatmsg" 1 Red
+
+    exit;
+  fi
+else
+  ## Display the 0 (zero) in dark gray, becease it is not processed
+  #
+  echo -e "${kleur[Cyan]} -n: numberinstances ${kleur[Purple]} (number) ${kleur[DarkGray]}: $numberinstances (OFF)"
+
+  if (( DebugLevel > 0 )); then
+    whatmsg="Check on how many instances are running is switches OFF! (Actual Running processes of arpmonitor.bash: $actualprocesses"
+    WriteLog 1 "$whatmsg" 0 LightBlue
+  fi
+fi
 
 if (( DebugLevel > 0 )); then
   whatmsg="Start the Arp Monitor routine, first do a initial arp-scan"
@@ -1354,3 +1418,4 @@ while [ $endless -lt $maxloops ]; do
         fi
   let endless=endless+1
 done
+exit
