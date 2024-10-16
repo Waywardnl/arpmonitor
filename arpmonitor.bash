@@ -93,6 +93,10 @@ function WriteLog()
      ## $2 = Message to Write (and/or Print)
      ## $3 = Write to screen (1=yes/0=no)
      ## $4 = Color? (Empty = No / Filled = Color)
+     ##
+     #####################################################
+     ## You may NOT call WriteLog() Function from within
+     ## this function! (Or you will create a loop)
      #
      funcDATUMTijd=$(date +%A-%d-%B-%Y--%T)
      FUNCMessage="${funcDATUMTijd}"
@@ -177,13 +181,13 @@ function WriteLog()
               if (( DebugLevel > 4 )); then
                  ## Write to the log file
                  #
-                 whatmsg="Rotate Directory --> $rotatedir"
-                 echo $whatmsg
+                 internmsg="Rotate Directory --> $rotatedir"
+                 echo $internmsg
                fi
 
               if (( DebugLevel > 2 )); then
-                whatmsg="Rotate Directory --> $rotatedir"
-                echo $whatmsg >> "${arpmonitorlog}"
+                internmsg="Rotate Directory --> $rotatedir"
+                echo $internmsg >> "${arpmonitorlog}"
               fi
 
               #echo ". $rotatedir ."
@@ -194,15 +198,17 @@ function WriteLog()
               if (( teltarfiles > 5 )); then
                 ## Show howmany Tar files have been found
                 #
-                #echo "We counted: $teltarfiles TAR Files"
+                if (( DebugLevel > 4 )); then
+                  ## Write to the log file
+                  #
+                  echo "We counted: $teltarfiles TAR Files, Run the tar file cleanup routine!" >> "${arpmonitorlog}"
+                fi
 
                 ## https://mywiki.wooledge.org/BashFAQ/003
                 #
                 unset -v oldest
                 for file in "$rotatedir"/*.tar; do
                   [[ -z $oldest || $file -ot $oldest ]] && oldest=$file
-
-                  #echo "Handling file: $file"
 
                   if (( DebugLevel > 2 )); then
                     ## Write to the log file
