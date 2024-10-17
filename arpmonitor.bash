@@ -475,11 +475,13 @@ if (( macdifferent > 0 )); then
     parameterwarning+=$breken
     macdiffpercent=80
 
+    echo "macdifferenpercent: $macdiffpercent"
+
     if (( DebugLevel > 0 )); then
       WriteLog 1 "$whatmsg" 0 Yellow
     fi
-  elif (( macdiffpercent > 0 )) || (( macdiffpercent < 101 )); then
-    whatmsg="macdiffpercent (-t) can only contain numbers between 1 and 100 (percent)(%). With this parameter you can control how many Mac adresses may be different if you have choosen mac different to yes (or 1). asssuming default percentage: 80.%%break%%"
+  elif (( macdiffpercent < 1 )) || (( macdiffpercent > 100 )); then
+    whatmsg="macdiffpercent (-t) can only contain numbers between 1 and 100 (percent)(%). With this parameter you can control how many Mac adresses may be different if you have choosen mac different to yes (or 1). asssuming default percentage: 80."
     parameterwarning+=$whatmsg
     parameterwarning+=$breken
     macdiffpercent=80
