@@ -135,38 +135,54 @@ function WriteLog()
      ## Fill the message with value 2 from function
      #
      FUNCMessage=$2
-     LOGmsg=${funcDATUMTijd}
-     LOGmsg+=" --> "
-     LOGmsg+=$prefix
-     LOGmsg+=" "
-     LOGmsg+=$FUNCMessage
+     #LOGmsg=${funcDATUMTijd}
+     #LOGmsg+=" --> "
+     #LOGmsg+=$prefix
+     #LOGmsg+=" "
+     #LOGmsg+=$FUNCMessage
 
      ## $1 > 0 then Write String $2 to log file
      #
-     if (( $1 > 0 )); then
+     prnlog=$1
+
+     if (( prnlog > 0 )); then
           ## Add an entry to the log file
           #
           if [ -n "$arpmonitorlog" ]; then
             ## Write the new entry to the log file
             ##
+            LOGmsg=${funcDATUMTijd}
+            LOGmsg+=" --> "
+            LOGmsg+=$prefix
+            LOGmsg+=" "
+            LOGmsg+="Log file rotated and tarred deu to size of Log file exceeded: $logmaxsize bytes."
+            echo $LOGmsg > "${arpmonitorlog}"
+
             ## But Lets check the size of the log file first
             ##
             file=file.txt
             actualsize=$(wc -c <"$arpmonitorlog")
 
+            echo "actualsize: $actualsize / logmaxsize: $logmaxsize"
+
             if [ $actualsize -gt $logmaxsize ]; then
-              echo "size is over $logmaxsize bytes" >> "${arpmonitorlog}"
+              echo "#### size is over $logmaxsize bytes" >> "${arpmonitorlog}"
 
               ziptar=$(echo "$arpmonitorlog" | sed "s/\.log/\(log)_$tarDATUMTijd.tar/g")
 
               tar --verbose -czf "$ziptar" "$arpmonitorlog"
 
-              LOGmsg=${funcDATUMTijd}
-              LOGmsg+=" --> "
-              LOGmsg+=$prefix
-              LOGmsg+=" "
-              LOGmsg+="Log file rotated and tarred deu to size of Log file exceeded: $logmaxsize bytes."
-              echo $LOGmsg > "${arpmonitorlog}"
+              #########################################################################
+              ## Changed position of log file writing, beceas ei think the log is not written anymore.
+              ## i Assume when the writing to the log file is above the if then else, then
+              ## The log writing works again
+              ##
+              ##LOGmsg=${funcDATUMTijd}
+              ##LOGmsg+=" --> "
+              ##LOGmsg+=$prefix
+              ##LOGmsg+=" "
+              ##LOGmsg+="Log file rotated and tarred deu to size of Log file exceeded: $logmaxsize bytes."
+              ##echo $LOGmsg > "${arpmonitorlog}"
              else
               ## We want to leave 5 tar files and remove the older ones
               #
@@ -742,12 +758,22 @@ if [ "$parameterwarning" != "" ]; then
   echo "Parameter Warnings (Script will execute)"
   echo -e "-----------------------------------------------------------${kleur[Color_Off]}"
 
+  whatmsg="Publish the warnings to the log file (The Script will RUN!)"
+  WriteLog 1 "$whatmsg" 0 Yellow
+
   ## Break Parameter warning in pieces through a symbol "|"
   #
   IFS=$breken read -ra WarningLines <<< "$parameterwarning"
   for warningline in "${WarningLines[@]}"
     do
+      ## Print the warbings we found to the screen
+      #
       echo -e "${kleur[Color_Off]}${kleur[Yellow]}${warningline}"
+
+      ## Share the warbings with the log file
+      #
+      whatmsg="${warningline}"
+      WriteLog 1 "$whatmsg" 0 LightBlue
     done
 fi
 if [ "$parameterTIP" != "" ]; then
@@ -756,10 +782,22 @@ if [ "$parameterTIP" != "" ]; then
   echo "Parameter Tips (Script will execute)"
   echo -e "-----------------------------------------------------------${kleur[Color_Off]}"
 
+  ## Share all the tips to the log file!
+  #
+  whatmsg="These are the TIPS from the script to the log file (The Script will RUN!)"
+  WriteLog 1 "$whatmsg" 0 LightBlue
+
   IFS=$breken read -ra TIPLines <<< "$parameterTIP"
   for TIPLine in "${TIPLines[@]}"
     do
+      ## Print the found TIPS from the script to the screen
+      #
       echo -e "${kleur[Color_Off]}${kleur[LightGray]}${TIPLine}"
+
+      ## Share the TIPS to the log file
+      #
+      whatmsg="${TIPLine}"
+      WriteLog 1 "$whatmsg" 0 LightBlue
     done
 
   if (( IPtest > 0 )) then
@@ -788,13 +826,27 @@ if [ "$parametererror" != "" ]; then
   echo "-----------------------------------------------------------"
   echo "Parameter Error (Script will STOP!)"
   echo -e "-----------------------------------------------------------${kleur[Color_Off]}"
-  #echo $parametererror
+
+  ## Share the details in the log file
+  #
+  whatmsg="These are the parameter errors we found (The Script will Stop!)"
+  WriteLog 1 "$whatmsg" 0 LightBlue
 
   IFS=$breken read -ra ErrorLines <<< "$parametererror"
   for ErrorLine in "${ErrorLines[@]}"
     do
+      ## Print all the errors on the screen
+      #
       echo -e "${kleur[Color_Off]}${kleur[LightRed]}${ErrorLine}"
+
+      ## Print all the errors to the log file (For troubleshooting)
+      #
+      whatmsg="${ErrorLine}"
+      WriteLog 1 "$whatmsg" 0 LightBlue
     done
+
+  whatmsg="-----> End of all error lines"
+  WriteLog 1 "$whatmsg" 0 LightBlue
 
   echo -e "${kleur[LightBlue]}-----------------------------------------------------------"
   echo "Parameter errors or parameters missing! Explenation:"
@@ -1010,7 +1062,8 @@ initialcount=$count
 let endless=0
 while [ $endless -lt $maxloops ]; do
         if (( DebugLevel > 0 )); then
-          echo "Loop through each line of initial arp-scan" >> "${arpmonitorlog}"
+          whatmsg="Loop through each line of initial arp-scan""
+          WriteLog 1 "$whatmsg" 0 LightBlue
         fi
 
         IFS=$'\n' read -d '' -r -a initiallines < "$initialdedup"
