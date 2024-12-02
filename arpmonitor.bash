@@ -43,6 +43,11 @@ done
 #
 fallbackarpmonitorlog="arp_fallback.log"
 
+## Minimal bytes for maximal log file size when debigging is higher than 2
+## If it is to low, the script will only rotate the log file
+#
+minlogmaxsizehighdebug=100000
+
 ## Colors for echo output
 #
 
@@ -143,7 +148,12 @@ function WriteLog()
 
      ## $1 > 0 then Write String $2 to log file
      #
-     if (( $1 > 0 )); then
+     prnlog=$1
+
+     ## $1 > 0 then Write String $2 to log file
+     #
+     #if (( $1 > 0 )); then
+     if (( $prnlog > 0 )); then
           ## Add an entry to the log file
           #
           if [ -n "$arpmonitorlog" ]; then
@@ -161,6 +171,8 @@ function WriteLog()
 
               tar --verbose -czf "$ziptar" "$arpmonitorlog"
 
+              ## Overwrite log file with new entry
+              #
               LOGmsg=${funcDATUMTijd}
               LOGmsg+=" --> "
               LOGmsg+=$prefix
@@ -628,15 +640,15 @@ if ! [[ "$logmaxsize" =~ ^[0-9]+$ ]]; then
   parameterwarning+=$whatmsg
   parameterwarning+=$breken
   logmaxsize=1000000
-elif (( logmaxsize > 10000000 )); then
-   whatmsg="logmaxsize (-x) cannot be higher than 10 MB. Assuming default of 1000000 bytes."
+elif (( logmaxsize > 20000000 )); then
+   whatmsg="logmaxsize (-x) cannot be higher than 20 MB. Assuming default of 2000000 bytes."
    parameterwarning+=$whatmsg
    parameterwarning+=$breken
-   logmaxsize=1000000
+   logmaxsize=2000000
    if (( DebugLevel > 0 )); then
      WriteLog 1 "$whatmsg" 0 Yellow
    fi
-elif (( logmaxsize < 100000  )); then
+elif (( logmaxsize < 100000 && DebugLevel < 3 )); then
    whatmsg="logmaxsize (-x) cannot be lower than 100000 bytes. Setting value to minimum: 100000 bytes."
    parameterwarning+=$whatmsg
    parameterwarning+=$breken
@@ -644,6 +656,25 @@ elif (( logmaxsize < 100000  )); then
    if (( DebugLevel > 0 )); then
      WriteLog 1 "$whatmsg" 0 Yellow
    fi
+elif (( logmaxsize < 1000000 && DebugLevel > 2 )); then
+   ## https://tecadmin.net/double-parentheses-in-bash/
+   #
+   whatmsg="logmaxsize (-x) cannot be lower than 1000000 bytes, becease the debug level is high, the script will only be rotating the log. Setting value to minimum: 1000000 bytes."
+   parameterwarning+=$whatmsg
+   parameterwarning+=$breken
+   logmaxsize=1000000
+   if (( DebugLevel > 0 )); then
+     WriteLog 1 "$whatmsg" 0 Yellow
+   fi
+else
+   whatmsg="Something went wrong with logmaxsize (-x), assuming standard value of 1000000 bytes."
+   parameterwarning+=$whatmsg
+   parameterwarning+=$breken
+   logmaxsize=10000000
+   if (( DebugLevel > 0 )); then
+     WriteLog 1 "$whatmsg" 0 Yellow
+   fi
+
 fi
 
 ## See if the maximum file size of the log file is correctly filled in
@@ -1010,7 +1041,9 @@ initialcount=$count
 let endless=0
 while [ $endless -lt $maxloops ]; do
         if (( DebugLevel > 0 )); then
-          echo "Loop through each line of initial arp-scan" >> "${arpmonitorlog}"
+          #echo "Loop through each line of initial arp-scan" >> "${arpmonitorlog}"
+          whatmsg="Loop through each line of initial arp-scan"
+          WriteLog 1 "$whatmsg" 0 LightBlue
         fi
 
         IFS=$'\n' read -d '' -r -a initiallines < "$initialdedup"
