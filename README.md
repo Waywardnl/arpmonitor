@@ -6,6 +6,10 @@ You need to install arp-scan
 
 pkg install apr-scan
 
+Optional, but handy you need ipcalc
+
+pkg install ipcalc
+
 You need to edit /etc/newsyslog.conf to keep the log rotated
 Add the following line
 /var/log/arpmonitor.log                 640  7     1000 *     JC
