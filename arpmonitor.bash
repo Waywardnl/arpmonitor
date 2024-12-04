@@ -157,6 +157,14 @@ function WriteLog()
           ## Add an entry to the log file
           #
           if [ -n "$arpmonitorlog" ]; then
+            ## Check if the file exists
+            #
+            if [ -f "$arpmonitorlog" ]; then
+              echo "Log file: $arpmonitorlog exists, write to the log file!" >> "${arpmonitorlog}"
+            else
+              echo "Log file: $arpmonitorlog does not exist, write a new log file (and a new entry)" > "${arpmonitorlog}"
+            fi
+
             ## Write the new entry to the log file
             ##
             ## But Lets check the size of the log file first
@@ -1457,7 +1465,7 @@ while [ $endless -lt $maxloops ]; do
           #
           RunningVMs=$(VBoxManage list runningvms)
           if (( DebugLevel > 0 )); then
-                whatmsg="Found the following machijnes running: $RunningVMs"
+                whatmsg="Found the following machines running: $RunningVMs"
                 WriteLog $prnDEBUG "$whatmsg" 0 Cyan
           fi
         fi
