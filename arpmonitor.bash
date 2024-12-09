@@ -845,7 +845,7 @@ if [ "$parameterTIP" != "" ]; then
       fi
     done
 
-  if (( IPtest > 0 )) then
+  if (( IPtest > 0 )); then
     echo -e "${kleur[White]}${kleur[OnBlue]}"
     echo "${divider}"
     echo "IP Calculation TIP (Script will execute)"
