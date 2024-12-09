@@ -1,9 +1,9 @@
-#!/usr/local/bin/bash
+#!/usr/bin/bash
 
 ## You need to install the following package to execute this file succesfully
 ##
-## pkg install arp-scan
-## pkg install ipcalc
+## apt install arp-scan
+## apt install ipcalc
 
 while getopts i:e:c:u:m:l:v:d:p:f:t:g:o:h:r:s:x:n: flag
 do
