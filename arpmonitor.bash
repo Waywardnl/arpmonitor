@@ -613,7 +613,7 @@ if valid_ip $iprange; then
        WriteLog 1 "$whatmsg" 1 Cyan
     fi
   done
-  if (( ipcount > 3 )) then
+  if (( ipcount > 3 )); then
     whatmsg="Entered IP address correct (-r), we will strip the last digit, so we can loop through the possible numbers."
     parameterwarning+=$whatmsg
     parameterwarning+=$breken
