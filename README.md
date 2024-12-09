@@ -1,14 +1,11 @@
-You need to install bash
-
-pkg install bash
 
 You need to install arp-scan
 
-pkg install arp-scan
+apt install arp-scan
 
 Optional, but handy you need ipcalc
 
-pkg install ipcalc
+apt install ipcalc
 
 You need to edit /etc/newsyslog.conf to keep the log rotated
 Add the following line
