@@ -4,7 +4,7 @@ pkg install bash
 
 You need to install arp-scan
 
-pkg install apr-scan
+pkg install arp-scan
 
 Optional, but handy you need ipcalc
 
