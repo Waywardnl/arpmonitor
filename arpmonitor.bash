@@ -87,6 +87,10 @@ kleur[OnWhite]='\033[47m'       # White
 #
 breken="|"
 
+## Please take the standard divider into a string
+#
+divider="-----------------------------------------------------------"
+
 ## Function to write log files
 #
 function WriteLog()
@@ -146,6 +150,10 @@ function WriteLog()
      LOGmsg+=" "
      LOGmsg+=$FUNCMessage
 
+     ## Write to the log after it is checked if the log file exists or NOT
+     #
+     #echo $LOGmsg >> "${arpmonitorlog}"
+
      ## $1 > 0 then Write String $2 to log file
      #
      prnlog=$1
@@ -160,7 +168,18 @@ function WriteLog()
             ## Check if the file exists
             #
             if [ -f "$arpmonitorlog" ]; then
-              echo "Log file: $arpmonitorlog exists, write to the log file!" >> "${arpmonitorlog}"
+              ## Go on with script file
+              #
+              writetolog=1
+              echo $LOGmsg >> "${arpmonitorlog}"
+
+              if (( DebugLevel > 4 )); then
+                 ## Write to the log file
+                 #
+                 internmsg="Log file: $arpmonitorlog exists, write to the log file!"
+                 echo  $internmsg >> "${arpmonitorlog}"
+               fi
+
             else
               echo "Log file: $arpmonitorlog does not exist, write a new log file (and a new entry)" > "${arpmonitorlog}"
             fi
@@ -169,11 +188,13 @@ function WriteLog()
             ##
             ## But Lets check the size of the log file first
             ##
-            file=file.txt
+            #file=file.txt
             actualsize=$(wc -c <"$arpmonitorlog")
 
             if [ $actualsize -gt $logmaxsize ]; then
-              echo "size is over $logmaxsize bytes" >> "${arpmonitorlog}"
+              if (( DebugLevel > 0 )); then
+                echo "size is over $logmaxsize bytes" >> "${arpmonitorlog}"
+              fi
 
               ziptar=$(echo "$arpmonitorlog" | sed "s/\.log/\(log)_$tarDATUMTijd.tar/g")
 
@@ -187,7 +208,7 @@ function WriteLog()
               LOGmsg+=" "
               LOGmsg+="Log file rotated and tarred deu to size of Log file exceeded: $logmaxsize bytes."
               echo $LOGmsg > "${arpmonitorlog}"
-             else
+            else
               ## We want to leave 5 tar files and remove the older ones
               #
               ## Get the path without the filename
@@ -254,6 +275,9 @@ function WriteLog()
                   #
                   whatmsg="Deleting Oldest (Log) TAR File: $oldest"
                   echo $whatmsg  >> "${arpmonitorlog}"
+                fi
+                if (( DebugLevel > 1 )); then
+                  echo "Removed: $oldest" >> "${arpmonitorlog}"
                 fi
                 rm "$oldest"
                 echo "Removed: $oldest"
@@ -777,9 +801,15 @@ fi
 
 if [ "$parameterwarning" != "" ]; then
   echo -e "${kleur[Black]}${kleur[OnYellow]}"
-  echo "-----------------------------------------------------------"
+  echo "${divider}"
   echo "Parameter Warnings (Script will execute)"
-  echo -e "-----------------------------------------------------------${kleur[Color_Off]}"
+  echo -e "${divider} ${kleur[Color_Off]}"
+  if (( DebugLevel > 0 )); then
+    whatmsg="Parameter Warnings (Script will execute)"
+    WriteLog 1 "$whatmsg" 0 LightBlue
+    whatmsg="${divider}"
+    WriteLog 1 "$whatmsg" 0 LightBlue
+  fi
 
   ## Break Parameter warning in pieces through a symbol "|"
   #
@@ -787,25 +817,39 @@ if [ "$parameterwarning" != "" ]; then
   for warningline in "${WarningLines[@]}"
     do
       echo -e "${kleur[Color_Off]}${kleur[Yellow]}${warningline}"
+      if (( DebugLevel > 0 )); then
+        whatmsg="${warningline}"
+        WriteLog 1 "$whatmsg" 0 LightBlue
+      fi
     done
 fi
 if [ "$parameterTIP" != "" ]; then
   echo -e "${kleur[Black]}${kleur[OnWhite]}"
-  echo "-----------------------------------------------------------"
+  echo "${divider}"
   echo "Parameter Tips (Script will execute)"
-  echo -e "-----------------------------------------------------------${kleur[Color_Off]}"
+  echo -e "${divider} ${kleur[Color_Off]}"
+  if (( DebugLevel > 0 )); then
+    whatmsg="Parameter Tips (Script will execute)"
+    WriteLog 1 "$whatmsg" 0 LightBlue
+    whatmsg="${divider}"
+    WriteLog 1 "$whatmsg" 0 LightBlue
+  fi
 
   IFS=$breken read -ra TIPLines <<< "$parameterTIP"
   for TIPLine in "${TIPLines[@]}"
     do
       echo -e "${kleur[Color_Off]}${kleur[LightGray]}${TIPLine}"
+      if (( DebugLevel > 0 )); then
+        whatmsg="${TIPLine}"
+        WriteLog 1 "$whatmsg" 0 LightBlue
+      fi
     done
 
   if (( IPtest > 0 )) then
     echo -e "${kleur[White]}${kleur[OnBlue]}"
-    echo "-----------------------------------------------------------"
+    echo "${divider}"
     echo "IP Calculation TIP (Script will execute)"
-    echo -e "-----------------------------------------------------------${kleur[Color_Off]}"
+    echo -e "${divider} ${kleur[Color_Off]}"
 
     ## We can calculate the ip adres with the subnet
     #
@@ -824,48 +868,59 @@ fi
 
 if [ "$parametererror" != "" ]; then
   echo -e "${kleur[White]}${kleur[OnRed]}"
-  echo "-----------------------------------------------------------"
+  echo "${divider}"
   echo "Parameter Error (Script will STOP!)"
-  echo -e "-----------------------------------------------------------${kleur[Color_Off]}"
-  #echo $parametererror
+  echo -e "${divider} ${kleur[Color_Off]}"
+  if (( DebugLevel > 0 )); then
+    whatmsg="Parameter Error (Script will STOP!)"
+    WriteLog 1 "$whatmsg" 0 LightBlue
+    whatmsg="${divider}"
+    WriteLog 1 "$whatmsg" 0 LightBlue
+  fi
 
   IFS=$breken read -ra ErrorLines <<< "$parametererror"
   for ErrorLine in "${ErrorLines[@]}"
     do
       echo -e "${kleur[Color_Off]}${kleur[LightRed]}${ErrorLine}"
+      if (( DebugLevel > 0 )); then
+        whatmsg="${ErrorLine}"
+        WriteLog 1 "$whatmsg" 0 LightBlue
+      fi
     done
 
-  echo -e "${kleur[LightBlue]}-----------------------------------------------------------"
+  ## Print the help lines
+  #
+  echo -e "${kleur[LightBlue]} ${divider}"
   echo "Parameter errors or parameters missing! Explenation:"
   echo ""
   echo "-h : Homedir       --> This means you will be using the script under a particular user."
   echo "                       The parameters: -i -c -u -e -m will be filled in automaticly with /home/USER/...."
-  echo "-----------------------------------------------------------"
+  echo "${divider}"
   echo "These parameters need to be filled in when (-h) Homedir is not used:"
   echo ""
   echo "-i: Initialarp      --> This is the file location of the initial arp-scan (With directory)."
   echo "-d: Initialdedup    --> This is the file location of the initial arp-scan (With directory)."
   echo "-c: ChkArp          --> This is the file location of the interval checks of arp-scan go (With directory)."
   echo "-e: Chkdeduparp     --> This is the file location of the deduplicated file of the interval checks of arp-scan go (With directory)."
-  echo "-----------------------------------------------------------"
+  echo "${divider}"
   echo "-m: Arpmonitorlog   --> This is the file location where the log file goes. (With directory)."
   echo "-x: Logmaxsize      --> Maximum File size of log file before we make a new log file"
-  echo "-----------------------------------------------------------"
+  echo "${divider}"
   echo "These parameters always need to be filled in:"
-  echo "-----------------------------------------------------------"
+  echo "${divider}"
   echo "-l: LANinterface    --> Name of the lan interface."
   echo "-v: Interval        --> The time the script has to wait before doing another arp-scan in seconds."
   echo "-d: DebugLevel      --> how much logging must be done to the logging file (0/1/2/3)"
   echo "-p: minpercentage   --> Minimal percentage that has too be the same Mac and Ip adress as the initial scan"
-  echo "-----------------------------------------------------------"
+  echo "${divider}"
   echo "-f: macdifferent    --> Must every Mac-adress be the same, or do we handle the check in a percentage?"
   echo "-t: macdiffpercent  --> If you have used parameter (-f YES) then you need to fill in a percentage to determine how many mac adresses may be different."
-  echo "-----------------------------------------------------------"
+  echo "${divider}"
   echo "-g: gracefultime    --> How many seconds does a Virtual Machine get to gracefully shutdown before a hard poweroff is given (in seconds)."
   echo "-o: maxloops        --> The maximum loops this script may run."
   echo "-r: IP Range        --> This is the range of IP adresses (192.168.8.xxx) that the app will scan. Please enter ip like: 10.10.10.0"
   echo "-s: IP Subnet       --> This is the subnet of the IP Range. Example: /24 = 255.255.255.0 -OR- /17 = 255.255.128.0"
-  echo "-----------------------------------------------------------"
+  echo "${divider}"
   echo "-n: numberinstances --> Maximum number of instances running of this script under the running user (0 = OFF)"
   echo -e "${kleur[Color_Off]}"
   exit
@@ -873,36 +928,160 @@ fi
 
 ## We will contineu the script
 #
-echo -e "${kleur[Cyan]} -----------------------------------------------------------"
-echo -e "${kleur[Cyan]} Received following parameters"
-echo -e "${kleur[Cyan]} -----------------------------------------------------------"
+echo -e "${kleur[Cyan]} ${divider}"
+if (( DebugLevel > 0 )); then
+  whatmsg="Received following parameters"
+  WriteLog 1 "$whatmsg" 1 Cyan
+fi
+
+if (( DebugLevel > 0 )); then
+  whatmsg="${divider}"
+  WriteLog 1 "$whatmsg" 1 Cyan
+else
+  echo -e "${kleur[Cyan]} ${divider}"
+fi
+
+if (( DebugLevel > 0 )); then
+  whatmsg="-i: Initialarp      (file)   : $initialarp"
+  WriteLog 1 "$whatmsg" 0 Cyan
+fi
 echo -e "${kleur[Cyan]} -i: Initialarp      ${kleur[Purple]} (file)   ${kleur[Cyan]}: $initialarp"
+
+if (( DebugLevel > 0 )); then
+  whatmsg="-d: Initialdedup    (file)   : $initialdedup"
+  WriteLog 1 "$whatmsg" 0 Cyan
+fi
 echo -e "${kleur[Cyan]} -d: Initialdedup    ${kleur[Purple]} (file)   ${kleur[Cyan]}: $initialdedup"
+
+if (( DebugLevel > 0 )); then
+  whatmsg="-c: ChkArp          (file)   : $chkarp"
+  WriteLog 1 "$whatmsg" 0 Cyan
+fi
 echo -e "${kleur[Cyan]} -c: ChkArp          ${kleur[Purple]} (file)   ${kleur[Cyan]}: $chkarp"
+
+if (( DebugLevel > 0 )); then
+  whatmsg="-e: chkdeduparp     ${kleur[Purple]} (file)   ${kleur[Cyan]}: $chkdeduparp"
+  WriteLog 1 "$whatmsg" 0 Cyan
+fi
 echo -e "${kleur[Cyan]} -e: chkdeduparp     ${kleur[Purple]} (file)   ${kleur[Cyan]}: $chkdeduparp"
-echo -e "${kleur[Cyan]} -----------------------------------------------------------"
+
+if (( DebugLevel > 0 )); then
+  whatmsg="${divider}"
+  WriteLog 1 "$whatmsg" 1 Cyan
+else
+  echo -e "${kleur[Cyan]} ${divider}"
+fi
+
+if (( DebugLevel > 0 )); then
+  whatmsg="-m: Arpmonitorlog   (file)   : $arpmonitorlog"
+  WriteLog 1 "$whatmsg" 0 Cyan
+fi
 echo -e "${kleur[Cyan]} -m: Arpmonitorlog   ${kleur[Purple]} (file)   ${kleur[Cyan]}: $arpmonitorlog"
+
+if (( DebugLevel > 0 )); then
+  whatmsg="-x: Logmaxsize      (number) : $logmaxsize"
+  WriteLog 1 "$whatmsg" 0 Cyan
+fi
 echo -e "${kleur[Cyan]} -x: Logmaxsize      ${kleur[Purple]} (number) ${kleur[Cyan]}: $logmaxsize"
-echo -e "${kleur[Cyan]} -----------------------------------------------------------"
+
+if (( DebugLevel > 0 )); then
+  whatmsg="${divider}"
+  WriteLog 1 "$whatmsg" 1 Cyan
+else
+  echo -e "${kleur[Cyan]} ${divider}"
+fi
+
+if (( DebugLevel > 0 )); then
+  whatmsg="-l: LANinterface    (name)   : $LANinterface"
+  WriteLog 1 "$whatmsg" 0 Cyan
+fi
 echo -e "${kleur[Cyan]} -l: LANinterface    ${kleur[Purple]} (name)   ${kleur[Cyan]}: $LANinterface"
+
+if (( DebugLevel > 0 )); then
+  whatmsg="-v: Interval        (seconds): $Interval"
+  WriteLog 1 "$whatmsg" 0 Cyan
+fi
 echo -e "${kleur[Cyan]} -v: Interval        ${kleur[Purple]} (seconds)${kleur[Cyan]}: $Interval"
+
+if (( DebugLevel > 0 )); then
+  whatmsg="-d: DebugLevel      (number) : $DebugLevel"
+  WriteLog 1 "$whatmsg" 0 Cyan
+fi
 echo -e "${kleur[Cyan]} -d: DebugLevel      ${kleur[Purple]} (number) ${kleur[Cyan]}: $DebugLevel"
+
+if (( DebugLevel > 0 )); then
+  whatmsg="-p: minpercentage   (number) : $minpercentage"
+  WriteLog 1 "$whatmsg" 0 Cyan
+fi
 echo -e "${kleur[Cyan]} -p: minpercentage   ${kleur[Purple]} (number) ${kleur[Cyan]}: $minpercentage"
-echo -e "${kleur[Cyan]} -----------------------------------------------------------"
+
+if (( DebugLevel > 0 )); then
+  whatmsg="${divider}"
+  WriteLog 1 "$whatmsg" 1 Cyan
+else
+  echo -e "${kleur[Cyan]} ${divider}"
+fi
+
 echo -e "${kleur[Cyan]} -f: macdifferent    ${kleur[Purple]} (bolean) ${kleur[Cyan]}: $macdifferent"
 
 if (( macdifferent < 1 )); then
   echo -e "${kleur[Cyan]} -t: macdiffpercent  ${kleur[Purple]} (number) ${kleur[DarkGray]}: Not Needed"
+  if (( DebugLevel > 0 )); then
+    whatmsg="-t: macdiffpercent  (number) : Not Needed"
+    WriteLog 1 "$whatmsg" 0 Cyan
+  fi
 else
   echo -e "${kleur[Cyan]} -t: macdiffpercent  ${kleur[Purple]} (number) ${kleur[Cyan]}: $macdiffpercent"
+  if (( DebugLevel > 0 )); then
+    whatmsg="-t: macdiffpercent  (number) : $macdiffpercent"
+    WriteLog 1 "$whatmsg" 0 Cyan
+  fi
 fi
 
-echo -e "${kleur[Cyan]} -----------------------------------------------------------"
+if (( DebugLevel > 0 )); then
+  whatmsg="${divider}"
+  WriteLog 1 "$whatmsg" 1 Cyan
+else
+  echo -e "${kleur[Cyan]} ${divider}"
+fi
+
+if (( DebugLevel > 0 )); then
+  whatmsg="-g: gracefultime    (seconds): $gracefultime"
+  WriteLog 1 "$whatmsg" 0 Cyan
+fi
 echo -e "${kleur[Cyan]} -g: gracefultime    ${kleur[Purple]} (seconds)${kleur[Cyan]}: $gracefultime"
+
+if (( DebugLevel > 0 )); then
+  whatmsg="-o: maxloops        (number) : $maxloops"
+  WriteLog 1 "$whatmsg" 0 Cyan
+fi
 echo -e "${kleur[Cyan]} -o: maxloops        ${kleur[Purple]} (number) ${kleur[Cyan]}: $maxloops"
+
+if (( DebugLevel > 0 )); then
+  whatmsg="-r: IP Range        (number) : $iprange"
+  WriteLog 1 "$whatmsg" 0 Cyan
+fi
 echo -e "${kleur[Cyan]} -r: IP Range        ${kleur[Purple]} (number) ${kleur[Cyan]}: $iprange"
+
+if (( DebugLevel > 0 )); then
+  whatmsg="-s: IP Subnet       (number) : $ipsubnet"
+  WriteLog 1 "$whatmsg" 0 Cyan
+fi
 echo -e "${kleur[Cyan]} -s: IP Subnet       ${kleur[Purple]} (number) ${kleur[Cyan]}: $ipsubnet"
-echo -e "${kleur[Cyan]} -----------------------------------------------------------"
+
+if (( DebugLevel > 0 )); then
+  whatmsg="${divider}"
+  WriteLog 1 "$whatmsg" 1 Cyan
+else
+  echo -e "${kleur[Cyan]} ${divider}"
+fi
+
+## Number of instances is a seperate line with a check inside it
+#
+#if (( DebugLevel > 0 )); then
+#  whatmsg="-n: numberinstances (number) : $numberinstances"
+#  WriteLog 1 "$whatmsg" 0 Cyan
+#fi
 #echo -e "${kleur[Cyan]} -n: numberinstances ${kleur[Purple]} (number) ${kleur[Cyan]}: $numberinstances"
 
 ## Record the number of running processes for arpmonitor.bash
@@ -922,6 +1101,10 @@ fi
 if (( numberinstances > 0 )); then
   ## Number of instances is greater than 0, check how many instances are active of arpmonitor.bash script
   #
+  if (( DebugLevel > 0 )); then
+    whatmsg="-n: numberinstances (number) : $numberinstances (Running: $actualprocesses)"
+    WriteLog 1 "$whatmsg" 0 Cyan
+  fi
   echo -e "${kleur[Cyan]} -n: numberinstances ${kleur[Purple]} (number) ${kleur[Cyan]}: $numberinstances ${kleur[DarkGray]} (Running: $actualprocesses)"
 
   if (( DebugLevel > 2 )); then
