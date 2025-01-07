@@ -29,15 +29,9 @@ do
     esac
 done
 
-#echo "Number of instances: $numberinstances"
-
-## Debugging
+## Get the current Process ID
 #
-#echo "Initialarp: $initialarp";
-#echo "Aprmonitorlog: ${arpmonitorlog}";
-#echo "IPRange: $iprange";
-
-#exit;
+processid=$$
 
 ## Fallback log
 #
@@ -144,7 +138,10 @@ function WriteLog()
      ## Fill the message with value 2 from function
      #
      FUNCMessage=$2
-     LOGmsg=${funcDATUMTijd}
+     LOGmsg="(pid:"
+     LOGmsg+=$processid
+     LOGmsg+=") "
+     LOGmsg+=${funcDATUMTijd}
      LOGmsg+=" --> "
      LOGmsg+=$prefix
      LOGmsg+=" "
@@ -196,7 +193,53 @@ function WriteLog()
                 echo "size is over $logmaxsize bytes" >> "${arpmonitorlog}"
               fi
 
+              ## Prepare the TAR File Name
+              #
               ziptar=$(echo "$arpmonitorlog" | sed "s/\.log/\(log)_$tarDATUMTijd.tar/g")
+              ziptar=$(echo "$ziptar" | sed "s/\$processid/\ALL/g")
+
+              ## Prepare the files that need to be TARred  (without the Leaf, only the branches/directorys)
+              #
+              splitstring="$arpmonitorlog"
+
+              ## Set forward slash as delimiter, to split the path into seperate parts
+              #
+              IFS='/' read -a splitarray <<< "$splitstring"
+
+              ## Find out what the leaf (file) is that represents the log file
+              ## By constantly filling a string with a part of the string
+              ## But not adding the part of file names into a string
+              #
+              for branch in "${splitarray[@]}"; do
+                fileleaf="$branch"
+                if (( DebugLevel > 3 )); then
+                   echo "Finding out Leaf file name, processing: $branch" >> "${arpmonitorlog}"
+                fi
+              done
+               if (( DebugLevel > 2 )); then
+                 echo "Found Leaf File: $fileleaf" >> "${arpmonitorlog}"
+               fi
+
+              ## Print the split string using the loop
+              #
+              consume="/"
+              for branch in "${splitarray[@]}"; do
+                if [[ $branch == *${fileleaf}* ]]; then
+                  if (( DebugLevel > 2 )); then
+                    echo "Found file: $fileleaf in path: $arpmonitorlog (Do not process the string)" >> "${arpmonitorlog}"
+                  fi
+                else
+                  if (( DebugLevel > 3 )); then
+                    echo "Adding $branch to ConsumeString: $consume" >> "${arpmonitorlog}"
+                  fi
+                  consume+="$branch"
+                  consume+="/"
+                fi
+              done
+              consume+="*_$fileleaf"
+              if (( DebugLevel > 1 )); then
+                 echo "Files to consume: $consume" >> "${arpmonitorlog}"
+               fi
 
               tar --verbose -czf "$ziptar" "$arpmonitorlog"
 
@@ -348,26 +391,45 @@ parameterTIP=""
 homedir="${homedir^^}"
 
 if [ "$homedir" = "Y" ] || [ "$homedir" = "YES" ] || [ "$homedir" = "JA" ] || [ "$homedir" = "1" ]; then
+  ## Create the initial Arp scan file name (including Process ID/pid)
+  #
   gebruiker=$(logname)
   initialarp="/home/"
   initialarp+=$gebruiker
-  initialarp+="/Data/initialarp.dat"
+  initialarp+="/Data/"
+  initialarp+=$processid
+  initialarp+="_initialarp.dat"
 
+  ## Create the initial dedup file name  (including Process ID/pid)
+  #
   initialdedup="/home/"
   initialdedup+=$gebruiker
-  initialdedup+="/Data/initialarpdedup.dat"
+  initialdedup+="/Data/"
+  initialdedup+=$processid
+  initialdedup+="initialarpdedup.dat"
 
+  ## Create the arpscanning file name for repeatingly scanning Mac adresses  (including Process ID/pid)
+  #
   chkarp="/home/"
   chkarp+=$gebruiker
-  chkarp+="/Data/arpscanning.dat"
+  chkarp+="/Data/"
+  chkarp+=$processid
+  chkarp+="_arpscanning.dat"
 
+  ## Create the arpscanning deduplicate file name for repeatingly scanning Mac adresses (including Process ID/pid)
   chkdeduparp="/home/"
   chkdeduparp+=$gebruiker
-  chkdeduparp+="/Data/arpdedupscanning.dat"
+  chkdeduparp+="/Data/"
+  chkdeduparp+=$processid
+  chkdeduparp+="_arpdedupscanning.dat"
 
+  ## Create the monitor log file name (including Process ID/pid)
+  #
   arpmonitorlog="/home/"
   arpmonitorlog+=$gebruiker
-  arpmonitorlog+="/Log/arpmonitor.log"
+  arpmonitorlog+="/Log/"
+  arpmonitorlog+=$processid
+  arpmonitorlog+="_arpmonitor.log"
 else
   ## Define Initial ARP result file
   #
@@ -613,7 +675,7 @@ if valid_ip $iprange; then
        WriteLog 1 "$whatmsg" 1 Cyan
     fi
   done
-  if (( ipcount > 3 )); then
+  if (( ipcount > 3 )) then
     whatmsg="Entered IP address correct (-r), we will strip the last digit, so we can loop through the possible numbers."
     parameterwarning+=$whatmsg
     parameterwarning+=$breken
@@ -845,7 +907,7 @@ if [ "$parameterTIP" != "" ]; then
       fi
     done
 
-  if (( IPtest > 0 )); then
+  if (( IPtest > 0 )) then
     echo -e "${kleur[White]}${kleur[OnBlue]}"
     echo "${divider}"
     echo "IP Calculation TIP (Script will execute)"
