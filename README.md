@@ -114,3 +114,19 @@ Copy code
 Let op
 Als $MaxScans is ingesteld op 1, wordt het script slechts één keer uitgevoerd.
 Het interval is belangrijk om te zorgen dat het netwerk voldoende tijd heeft om wijzigingen te detecteren.
+---------------------
+Wat is nieuw?
+CSV-Logging:
+
+Het script schrijft per scan een regel in een CSV-bestand met de volgende kolommen:
+Timestamp: Tijdstip van de scan.
+TotalMACs: Totaal aantal MAC-adressen gedetecteerd.
+EqualMACs: Aantal MAC-adressen dat onveranderd is gebleven.
+RemovedMACs: Aantal MAC-adressen dat verwijderd is.
+NewMACs: Aantal MAC-adressen dat nieuw is toegevoegd.
+CSV Initialisatie:
+
+Als het bestand nog niet bestaat, maakt het script een nieuw CSV-bestand met headers.
+Logging naar CSV:
+
+Per scan worden de statistieken toegevoegd als een nieuwe regel in het CSV-bestand.
