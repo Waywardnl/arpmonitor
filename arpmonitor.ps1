@@ -1,7 +1,10 @@
+param (
+    [int]$ThresholdPercentage = 30,           # Standaard wijzigingspercentage
+    [string]$LogFile = "C:\temp\MacAddressLog.txt"  # Standaard logbestand locatie
+)
+
 # Configuratie
 $MacAddressFile = "C:\temp\MacAddresses.txt"
-$LogFile = "C:\temp\MacAddressLog.txt"
-$ThresholdPercentage = 30
 
 # Functie voor logging
 function Write-Log {
@@ -31,6 +34,8 @@ function OnChangeDetected {
 
 # Logging start
 Write-Log "Starting MAC address monitoring script."
+Write-Log "Threshold percentage set to $ThresholdPercentage%."
+Write-Log "Log file location: $LogFile."
 
 # Huidige MAC-adressen ophalen
 $CurrentMacAddresses = Get-MacAddresses
