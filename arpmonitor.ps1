@@ -2,11 +2,11 @@
 $MacAddressFile = "C:\temp\MacAddresses.txt"
 $ThresholdPercentage = 30
 
-# Functie om huidige MAC-adressen te scannen
+# Functie om unieke MAC-adressen te verkrijgen
 function Get-MacAddresses {
     arp -a | ForEach-Object {
-        if ($_ -match "([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}") {
-            $matches[0]
+        if ($_ -match "([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}") {
+            $matches[0] -replace "[:-]", "-"  # Uniformeer MAC-adressen
         }
     } | Sort-Object -Unique
 }
