@@ -51,3 +51,21 @@ Copy code
 Belangrijk
 Rechten: Zorg dat de gebruiker rechten heeft om processen te inspecteren en logbestanden te schrijven.
 Logginglocatie: Pas $LogFile aan naar een geschikte locatie.
+
+------------------
+
+Voorbeeldgebruik
+Met standaardwaarden:
+
+powershell
+Copy code
+.\DetectMacChanges.ps1
+Met aangepaste parameters:
+
+powershell
+Copy code
+.\DetectMacChanges.ps1 -ThresholdPercentage 40 -LogFile "D:\Logs\MacLog.txt" -MaxInstances 2 -LogFileSizeThresholdKB 512 -MaxZipFiles 10
+Let op
+Zorg ervoor dat het opgegeven zip-pad ($ZipFolder) toegankelijk is.
+De logbestanden worden alleen gecomprimeerd als de limiet wordt overschreden. Tot die tijd blijft het script normaal functioneren.
+
