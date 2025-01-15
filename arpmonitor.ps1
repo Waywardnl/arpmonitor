@@ -74,7 +74,7 @@ if ($ChangedPercentage -ge $ThresholdPercentage) {
     Write-Log "Change percentage below threshold. No action taken."
 }
 
-# Huidige MAC-adressen opslaan
+# Huidige MAC-adressen opslaan 
 $CurrentMacAddresses | Out-File $MacAddressFile
 Write-Log "Updated MAC addresses saved."
 Write-Log "Script execution completed."
