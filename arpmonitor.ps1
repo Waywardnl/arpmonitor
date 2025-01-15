@@ -1,12 +1,20 @@
 param (
-    [int]$ThresholdPercentage = 30,           # Wijzigingspercentage
-    [string]$LogFile = "C:\temp\MacAddressLog.txt",  # Logbestand locatie
-    [int]$MaxInstances = 1                     # Maximum aantal toegestane instanties
+    [int]$ThresholdPercentage = 30,               # Wijzigingspercentage
+    [string]$LogFile = "C:\temp\MacAddressLog.txt", # Locatie van het logbestand
+    [int]$MaxInstances = 1,                       # Maximum aantal scriptinstanties
+    [int]$LogFileSizeThresholdKB = 1024,          # Maximale grootte van het logbestand in KB
+    [int]$MaxZipFiles = 5,                        # Maximum aantal zip-bestanden
+    [string]$ZipFolder = "C:\temp\LogsArchive"    # Locatie voor zip-bestanden
 )
 
 # Configuratie
 $MacAddressFile = "C:\temp\MacAddresses.txt"
 $ScriptName = $MyInvocation.MyCommand.Name
+
+# Controleer of het ZipFolder bestaat, maak het anders aan
+if (-not (Test-Path $ZipFolder)) {
+    New-Item -ItemType Directory -Path $ZipFolder | Out-Null
+}
 
 # Functie voor logging
 function Write-Log {
@@ -24,12 +32,45 @@ function Get-ScriptInstances {
     Get-Process | Where-Object { $_.Path -eq $PSCommandPath } | Measure-Object | Select-Object -ExpandProperty Count
 }
 
+# Functie om logbestanden in te pakken
+function Manage-LogFile {
+    # Controleer grootte van het logbestand
+    if (Test-Path $LogFile) {
+        $LogFileSizeKB = (Get-Item $LogFile).Length / 1KB
+        if ($LogFileSizeKB -ge $LogFileSizeThresholdKB) {
+            Write-Log "Log file exceeds $LogFileSizeThresholdKB KB. Archiving log file."
+
+            # Maak een zip-bestand
+            $Timestamp = Get-Date -Format "yyyyMMddHHmmss"
+            $ZipFile = Join-Path $ZipFolder "Log_$Timestamp.zip"
+            Compress-Archive -Path $LogFile -DestinationPath $ZipFile -Force
+
+            # Logbestand leegmaken
+            Clear-Content $LogFile
+            Write-Log "Log file archived to $ZipFile and cleared."
+
+            # Beheer zip-bestanden als er meer zijn dan toegestaan
+            $ZipFiles = Get-ChildItem -Path $ZipFolder -Filter "*.zip" | Sort-Object LastWriteTime -Descending
+            if ($ZipFiles.Count -gt $MaxZipFiles) {
+                $FilesToDelete = $ZipFiles | Select-Object -Skip $MaxZipFiles
+                foreach ($File in $FilesToDelete) {
+                    Remove-Item $File.FullName -Force
+                    Write-Log "Deleted old archive: $($File.FullName)"
+                }
+            }
+        }
+    }
+}
+
 # Controleer het aantal actieve instanties
 $CurrentInstances = Get-ScriptInstances
 if ($CurrentInstances -gt $MaxInstances) {
     Write-Log "Maximum number of script instances ($MaxInstances) exceeded. Exiting."
     exit
 }
+
+# Controleer en beheer het logbestand
+Manage-LogFile
 
 # Functie om unieke MAC-adressen te verkrijgen
 function Get-MacAddresses {
@@ -52,6 +93,8 @@ Write-Log "Threshold percentage set to $ThresholdPercentage%."
 Write-Log "Log file location: $LogFile."
 Write-Log "Maximum script instances allowed: $MaxInstances."
 Write-Log "Current running instances: $CurrentInstances."
+Write-Log "Log file size threshold: $LogFileSizeThresholdKB KB."
+Write-Log "Maximum zip files allowed: $MaxZipFiles."
 
 # Huidige MAC-adressen ophalen
 $CurrentMacAddresses = Get-MacAddresses
