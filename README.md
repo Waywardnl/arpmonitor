@@ -68,4 +68,24 @@ Copy code
 Let op
 Zorg ervoor dat het opgegeven zip-pad ($ZipFolder) toegankelijk is.
 De logbestanden worden alleen gecomprimeerd als de limiet wordt overschreden. Tot die tijd blijft het script normaal functioneren.
+-----------------------
+Parameter $IpRange:
+Gebruiker kan een IP-bereik specificeren in CIDR-notatie (bijv. 192.168.1.0/24).
+Functie Get-IpAddresses:
+Genereert een lijst van IP-adressen binnen het opgegeven subnet.
+Functie Get-MacAddresses:
+Beperkt de MAC-adresdetectie tot alleen de opgegeven IP-adressen.
+Voorbeeldgebruik
+Standaard:
 
+powershell
+Copy code
+.\DetectMacChanges.ps1
+Met aangepast IP-bereik:
+
+powershell
+Copy code
+.\DetectMacChanges.ps1 -IpRange "192.168.0.0/24" -ThresholdPercentage 20
+Let op
+Het script maakt gebruik van de arp-tool om MAC-adressen op te halen. Het is belangrijk dat de IP-adressen in het bereik eerder zijn gepingd om ARP-tabelvermeldingen te genereren.
+Zorg ervoor dat de gebruiker voldoende rechten heeft voor netwerkbewerkingen.
