@@ -1,10 +1,12 @@
 param (
-    [int]$ThresholdPercentage = 30,           # Standaard wijzigingspercentage
-    [string]$LogFile = "C:\temp\MacAddressLog.txt"  # Standaard logbestand locatie
+    [int]$ThresholdPercentage = 30,           # Wijzigingspercentage
+    [string]$LogFile = "C:\temp\MacAddressLog.txt",  # Logbestand locatie
+    [int]$MaxInstances = 1                     # Maximum aantal toegestane instanties
 )
 
 # Configuratie
 $MacAddressFile = "C:\temp\MacAddresses.txt"
+$ScriptName = $MyInvocation.MyCommand.Name
 
 # Functie voor logging
 function Write-Log {
@@ -15,6 +17,18 @@ function Write-Log {
     $LogMessage = "[$Timestamp] $Message"
     Write-Output $LogMessage | Out-File -Append -FilePath $LogFile
     Write-Host $LogMessage
+}
+
+# Functie om actieve instanties van dit script te tellen
+function Get-ScriptInstances {
+    Get-Process | Where-Object { $_.Path -eq $PSCommandPath } | Measure-Object | Select-Object -ExpandProperty Count
+}
+
+# Controleer het aantal actieve instanties
+$CurrentInstances = Get-ScriptInstances
+if ($CurrentInstances -gt $MaxInstances) {
+    Write-Log "Maximum number of script instances ($MaxInstances) exceeded. Exiting."
+    exit
 }
 
 # Functie om unieke MAC-adressen te verkrijgen
@@ -28,7 +42,7 @@ function Get-MacAddresses {
 
 # Actie bij detectie van veranderingen
 function OnChangeDetected {
-    Write-Log "30% of MAC addresses have changed or disappeared!"
+    Write-Log "30% or more of MAC addresses have changed or disappeared!"
     # Voeg hier een extra actie toe, zoals een e-mailnotificatie of alarm.
 }
 
@@ -36,6 +50,8 @@ function OnChangeDetected {
 Write-Log "Starting MAC address monitoring script."
 Write-Log "Threshold percentage set to $ThresholdPercentage%."
 Write-Log "Log file location: $LogFile."
+Write-Log "Maximum script instances allowed: $MaxInstances."
+Write-Log "Current running instances: $CurrentInstances."
 
 # Huidige MAC-adressen ophalen
 $CurrentMacAddresses = Get-MacAddresses
@@ -74,7 +90,7 @@ if ($ChangedPercentage -ge $ThresholdPercentage) {
     Write-Log "Change percentage below threshold. No action taken."
 }
 
-# Huidige MAC-adressen opslaan 
+# Huidige MAC-adressen opslaan
 $CurrentMacAddresses | Out-File $MacAddressFile
 Write-Log "Updated MAC addresses saved."
 Write-Log "Script execution completed."
