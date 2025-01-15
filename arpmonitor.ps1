@@ -7,7 +7,8 @@ param (
     [string]$ZipFolder = "C:\temp\LogsArchive",   # Locatie voor zip-bestanden
     [string]$IpRange = "192.168.1.0/24",          # IP-bereik om te scannen
     [int]$ScanIntervalSeconds = 60,               # Interval tussen scans in seconden
-    [int]$MaxScans = 10                           # Maximum aantal scans
+    [int]$MaxScans = 10,                          # Maximum aantal scans
+    [string]$CsvFile = "C:\temp\MacAddressStats.csv" # Locatie van CSV-bestand voor monitoring
 )
 
 # Configuratie
@@ -19,6 +20,13 @@ if (-not (Test-Path $ZipFolder)) {
     New-Item -ItemType Directory -Path $ZipFolder | Out-Null
 }
 
+# Controleer of het CSV-bestand bestaat, anders maak je een nieuwe
+if (-not (Test-Path $CsvFile)) {
+    @"
+Timestamp,TotalMACs,EqualMACs,RemovedMACs,NewMACs
+"@ | Out-File -FilePath $CsvFile -Encoding UTF8
+}
+
 # Functie voor logging
 function Write-Log {
     param (
@@ -28,11 +36,6 @@ function Write-Log {
     $LogMessage = "[$Timestamp] $Message"
     Write-Output $LogMessage | Out-File -Append -FilePath $LogFile
     Write-Host $LogMessage
-}
-
-# Functie om actieve instanties van dit script te tellen
-function Get-ScriptInstances {
-    Get-Process | Where-Object { $_.Path -eq $PSCommandPath } | Measure-Object | Select-Object -ExpandProperty Count
 }
 
 # Functie om een lijst van IP-adressen te genereren op basis van een IP-range
@@ -71,40 +74,7 @@ function Get-MacAddresses {
     return $MacAddresses | Sort-Object -Unique
 }
 
-# Functie om logbestanden in te pakken
-function Manage-LogFile {
-    if (Test-Path $LogFile) {
-        $LogFileSizeKB = (Get-Item $LogFile).Length / 1KB
-        if ($LogFileSizeKB -ge $LogFileSizeThresholdKB) {
-            Write-Log "Log file exceeds $LogFileSizeThresholdKB KB. Archiving log file."
-
-            $Timestamp = Get-Date -Format "yyyyMMddHHmmss"
-            $ZipFile = Join-Path $ZipFolder "Log_$Timestamp.zip"
-            Compress-Archive -Path $LogFile -DestinationPath $ZipFile -Force
-
-            Clear-Content $LogFile
-            Write-Log "Log file archived to $ZipFile and cleared."
-
-            $ZipFiles = Get-ChildItem -Path $ZipFolder -Filter "*.zip" | Sort-Object LastWriteTime -Descending
-            if ($ZipFiles.Count -gt $MaxZipFiles) {
-                $FilesToDelete = $ZipFiles | Select-Object -Skip $MaxZipFiles
-                foreach ($File in $FilesToDelete) {
-                    Remove-Item $File.FullName -Force
-                    Write-Log "Deleted old archive: $($File.FullName)"
-                }
-            }
-        }
-    }
-}
-
-# Controleer het aantal actieve instanties
-$CurrentInstances = Get-ScriptInstances
-if ($CurrentInstances -gt $MaxInstances) {
-    Write-Log "Maximum number of script instances ($MaxInstances) exceeded. Exiting."
-    exit
-}
-
-# Functie voor het uitvoeren van een enkele scan
+# Functie om een enkele scan uit te voeren
 function PerformScan {
     Write-Log "Performing a MAC address scan."
 
@@ -129,18 +99,20 @@ function PerformScan {
     # Vergelijken van de MAC-adressen
     $RemovedMacs = $PreviousMacAddresses | Where-Object { $_ -notin $CurrentMacAddresses }
     $NewMacs = $CurrentMacAddresses | Where-Object { $_ -notin $PreviousMacAddresses }
+    $EqualMacs = $PreviousMacAddresses | Where-Object { $_ -in $CurrentMacAddresses }
 
     Write-Log "Removed MACs: $($RemovedMacs -join ', ')"
     Write-Log "New MACs: $($NewMacs -join ', ')"
 
     $TotalMacs = [math]::Max($PreviousMacAddresses.Count, $CurrentMacAddresses.Count)
-    if ($TotalMacs -eq 0) {
-        Write-Log "No MAC addresses to compare."
-        return
-    }
-
     $ChangedPercentage = (($RemovedMacs.Count + $NewMacs.Count) / $TotalMacs) * 100
     Write-Log "Changed percentage: $ChangedPercentage%"
+
+    # Opslaan in het CSV-bestand
+    $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $CsvLine = "$Timestamp,$TotalMacs,$($EqualMacs.Count),$($RemovedMacs.Count),$($NewMacs.Count)"
+    Add-Content -Path $CsvFile -Value $CsvLine
+    Write-Log "Statistics saved to CSV: $CsvFile"
 
     if ($ChangedPercentage -ge $ThresholdPercentage) {
         Write-Log "Change detected above threshold!"
@@ -148,12 +120,10 @@ function PerformScan {
         Write-Log "Change percentage below threshold. No action taken."
     }
 
+    # Update het referentiebestand
     $CurrentMacAddresses | Out-File $MacAddressFile
     Write-Log "Updated MAC addresses saved."
 }
-
-# Beheer van logbestand
-Manage-LogFile
 
 # Repeterende scans uitvoeren
 for ($i = 1; $i -le $MaxScans; $i++) {
