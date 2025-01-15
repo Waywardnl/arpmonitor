@@ -4,7 +4,8 @@ param (
     [int]$MaxInstances = 1,                       # Maximum aantal scriptinstanties
     [int]$LogFileSizeThresholdKB = 1024,          # Maximale grootte van het logbestand in KB
     [int]$MaxZipFiles = 5,                        # Maximum aantal zip-bestanden
-    [string]$ZipFolder = "C:\temp\LogsArchive"    # Locatie voor zip-bestanden
+    [string]$ZipFolder = "C:\temp\LogsArchive",   # Locatie voor zip-bestanden
+    [string]$IpRange = "192.168.1.0/24"           # IP-bereik om te scannen
 )
 
 # Configuratie
@@ -32,24 +33,63 @@ function Get-ScriptInstances {
     Get-Process | Where-Object { $_.Path -eq $PSCommandPath } | Measure-Object | Select-Object -ExpandProperty Count
 }
 
-# Functie om logbestanden in te pakken
+# Functie om een lijst van IP-adressen te genereren op basis van een IP-range
+function Get-IpAddresses {
+    param (
+        [string]$Subnet
+    )
+    $Address = $Subnet.Split('/')[0]
+    $MaskBits = [int]($Subnet.Split('/')[1])
+
+    # Bereken de netwerkgrootte en IP-adressen
+    $BaseIp = [System.Net.IPAddress]::Parse($Address).GetAddressBytes()
+    $HostsCount = [math]::Pow(2, 32 - $MaskBits) - 2
+
+    $Ips = @()
+    for ($i = 1; $i -le $HostsCount; $i++) {
+        $CurrentIp = [System.Net.IPAddress]($BaseIp)
+        $CurrentIp = [System.Net.IPAddress]::HostToNetworkOrder([bitconverter]::ToInt32($BaseIp, 0) + $i)
+        $Ips += [System.Net.IPAddress]::Parse($CurrentIp).ToString()
+    }
+    return $Ips
+}
+
+# Functie om MAC-adressen binnen een specifiek IP-bereik te verkrijgen
+function Get-MacAddresses {
+    param (
+        [string[]]$IpAddresses
+    )
+    $MacAddresses = @()
+    foreach ($Ip in $IpAddresses) {
+        $ArpEntry = arp -a | Select-String $Ip
+        if ($ArpEntry -match "([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}") {
+            $MacAddresses += ($matches[0] -replace "[:-]", "-")
+        }
+    }
+    return $MacAddresses | Sort-Object -Unique
+}
+
+# Controleer het aantal actieve instanties
+$CurrentInstances = Get-ScriptInstances
+if ($CurrentInstances -gt $MaxInstances) {
+    Write-Log "Maximum number of script instances ($MaxInstances) exceeded. Exiting."
+    exit
+}
+
+# Controleer en beheer het logbestand
 function Manage-LogFile {
-    # Controleer grootte van het logbestand
     if (Test-Path $LogFile) {
         $LogFileSizeKB = (Get-Item $LogFile).Length / 1KB
         if ($LogFileSizeKB -ge $LogFileSizeThresholdKB) {
             Write-Log "Log file exceeds $LogFileSizeThresholdKB KB. Archiving log file."
 
-            # Maak een zip-bestand
             $Timestamp = Get-Date -Format "yyyyMMddHHmmss"
             $ZipFile = Join-Path $ZipFolder "Log_$Timestamp.zip"
             Compress-Archive -Path $LogFile -DestinationPath $ZipFile -Force
 
-            # Logbestand leegmaken
             Clear-Content $LogFile
             Write-Log "Log file archived to $ZipFile and cleared."
 
-            # Beheer zip-bestanden als er meer zijn dan toegestaan
             $ZipFiles = Get-ChildItem -Path $ZipFolder -Filter "*.zip" | Sort-Object LastWriteTime -Descending
             if ($ZipFiles.Count -gt $MaxZipFiles) {
                 $FilesToDelete = $ZipFiles | Select-Object -Skip $MaxZipFiles
@@ -62,42 +102,14 @@ function Manage-LogFile {
     }
 }
 
-# Controleer het aantal actieve instanties
-$CurrentInstances = Get-ScriptInstances
-if ($CurrentInstances -gt $MaxInstances) {
-    Write-Log "Maximum number of script instances ($MaxInstances) exceeded. Exiting."
-    exit
-}
-
-# Controleer en beheer het logbestand
 Manage-LogFile
 
-# Functie om unieke MAC-adressen te verkrijgen
-function Get-MacAddresses {
-    arp -a | ForEach-Object {
-        if ($_ -match "([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}") {
-            $matches[0] -replace "[:-]", "-"  # Uniformeer MAC-adressen
-        }
-    } | Sort-Object -Unique
-}
-
-# Actie bij detectie van veranderingen
-function OnChangeDetected {
-    Write-Log "30% or more of MAC addresses have changed or disappeared!"
-    # Voeg hier een extra actie toe, zoals een e-mailnotificatie of alarm.
-}
-
-# Logging start
-Write-Log "Starting MAC address monitoring script."
-Write-Log "Threshold percentage set to $ThresholdPercentage%."
-Write-Log "Log file location: $LogFile."
-Write-Log "Maximum script instances allowed: $MaxInstances."
-Write-Log "Current running instances: $CurrentInstances."
-Write-Log "Log file size threshold: $LogFileSizeThresholdKB KB."
-Write-Log "Maximum zip files allowed: $MaxZipFiles."
+# Genereer de IP-adressen van het opgegeven IP-bereik
+$IpAddresses = Get-IpAddresses -Subnet $IpRange
+Write-Log "Scanning MAC addresses in IP range: $IpRange."
 
 # Huidige MAC-adressen ophalen
-$CurrentMacAddresses = Get-MacAddresses
+$CurrentMacAddresses = Get-MacAddresses -IpAddresses $IpAddresses
 Write-Log "Current MAC addresses: $($CurrentMacAddresses -join ', ')"
 
 # Controlebestand inladen of aanmaken
@@ -117,7 +129,6 @@ $NewMacs = $CurrentMacAddresses | Where-Object { $_ -notin $PreviousMacAddresses
 Write-Log "Removed MACs: $($RemovedMacs -join ', ')"
 Write-Log "New MACs: $($NewMacs -join ', ')"
 
-# Detecteren van wijzigingen
 $TotalMacs = [math]::Max($PreviousMacAddresses.Count, $CurrentMacAddresses.Count)
 if ($TotalMacs -eq 0) {
     Write-Log "No MAC addresses to compare. Exiting script."
@@ -128,12 +139,11 @@ $ChangedPercentage = (($RemovedMacs.Count + $NewMacs.Count) / $TotalMacs) * 100
 Write-Log "Changed percentage: $ChangedPercentage%"
 
 if ($ChangedPercentage -ge $ThresholdPercentage) {
-    OnChangeDetected
+    Write-Log "Change detected above threshold!"
 } else {
     Write-Log "Change percentage below threshold. No action taken."
 }
 
-# Huidige MAC-adressen opslaan
 $CurrentMacAddresses | Out-File $MacAddressFile
 Write-Log "Updated MAC addresses saved."
 Write-Log "Script execution completed."
