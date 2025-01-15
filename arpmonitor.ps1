@@ -5,7 +5,9 @@ param (
     [int]$LogFileSizeThresholdKB = 1024,          # Maximale grootte van het logbestand in KB
     [int]$MaxZipFiles = 5,                        # Maximum aantal zip-bestanden
     [string]$ZipFolder = "C:\temp\LogsArchive",   # Locatie voor zip-bestanden
-    [string]$IpRange = "192.168.1.0/24"           # IP-bereik om te scannen
+    [string]$IpRange = "192.168.1.0/24",          # IP-bereik om te scannen
+    [int]$ScanIntervalSeconds = 60,               # Interval tussen scans in seconden
+    [int]$MaxScans = 10                           # Maximum aantal scans
 )
 
 # Configuratie
@@ -69,14 +71,7 @@ function Get-MacAddresses {
     return $MacAddresses | Sort-Object -Unique
 }
 
-# Controleer het aantal actieve instanties
-$CurrentInstances = Get-ScriptInstances
-if ($CurrentInstances -gt $MaxInstances) {
-    Write-Log "Maximum number of script instances ($MaxInstances) exceeded. Exiting."
-    exit
-}
-
-# Controleer en beheer het logbestand
+# Functie om logbestanden in te pakken
 function Manage-LogFile {
     if (Test-Path $LogFile) {
         $LogFileSizeKB = (Get-Item $LogFile).Length / 1KB
@@ -102,48 +97,71 @@ function Manage-LogFile {
     }
 }
 
-Manage-LogFile
-
-# Genereer de IP-adressen van het opgegeven IP-bereik
-$IpAddresses = Get-IpAddresses -Subnet $IpRange
-Write-Log "Scanning MAC addresses in IP range: $IpRange."
-
-# Huidige MAC-adressen ophalen
-$CurrentMacAddresses = Get-MacAddresses -IpAddresses $IpAddresses
-Write-Log "Current MAC addresses: $($CurrentMacAddresses -join ', ')"
-
-# Controlebestand inladen of aanmaken
-if (Test-Path $MacAddressFile) {
-    $PreviousMacAddresses = Get-Content $MacAddressFile
-    Write-Log "Previous MAC addresses loaded."
-} else {
-    $PreviousMacAddresses = @()
-    $CurrentMacAddresses | Out-File $MacAddressFile
-    Write-Log "No previous MAC addresses found. Created a new reference file."
-}
-
-# Vergelijken van de MAC-adressen
-$RemovedMacs = $PreviousMacAddresses | Where-Object { $_ -notin $CurrentMacAddresses }
-$NewMacs = $CurrentMacAddresses | Where-Object { $_ -notin $PreviousMacAddresses }
-
-Write-Log "Removed MACs: $($RemovedMacs -join ', ')"
-Write-Log "New MACs: $($NewMacs -join ', ')"
-
-$TotalMacs = [math]::Max($PreviousMacAddresses.Count, $CurrentMacAddresses.Count)
-if ($TotalMacs -eq 0) {
-    Write-Log "No MAC addresses to compare. Exiting script."
+# Controleer het aantal actieve instanties
+$CurrentInstances = Get-ScriptInstances
+if ($CurrentInstances -gt $MaxInstances) {
+    Write-Log "Maximum number of script instances ($MaxInstances) exceeded. Exiting."
     exit
 }
 
-$ChangedPercentage = (($RemovedMacs.Count + $NewMacs.Count) / $TotalMacs) * 100
-Write-Log "Changed percentage: $ChangedPercentage%"
+# Functie voor het uitvoeren van een enkele scan
+function PerformScan {
+    Write-Log "Performing a MAC address scan."
 
-if ($ChangedPercentage -ge $ThresholdPercentage) {
-    Write-Log "Change detected above threshold!"
-} else {
-    Write-Log "Change percentage below threshold. No action taken."
+    # Genereer de IP-adressen van het opgegeven IP-bereik
+    $IpAddresses = Get-IpAddresses -Subnet $IpRange
+    Write-Log "Scanning MAC addresses in IP range: $IpRange."
+
+    # Huidige MAC-adressen ophalen
+    $CurrentMacAddresses = Get-MacAddresses -IpAddresses $IpAddresses
+    Write-Log "Current MAC addresses: $($CurrentMacAddresses -join ', ')"
+
+    # Controlebestand inladen of aanmaken
+    if (Test-Path $MacAddressFile) {
+        $PreviousMacAddresses = Get-Content $MacAddressFile
+        Write-Log "Previous MAC addresses loaded."
+    } else {
+        $PreviousMacAddresses = @()
+        $CurrentMacAddresses | Out-File $MacAddressFile
+        Write-Log "No previous MAC addresses found. Created a new reference file."
+    }
+
+    # Vergelijken van de MAC-adressen
+    $RemovedMacs = $PreviousMacAddresses | Where-Object { $_ -notin $CurrentMacAddresses }
+    $NewMacs = $CurrentMacAddresses | Where-Object { $_ -notin $PreviousMacAddresses }
+
+    Write-Log "Removed MACs: $($RemovedMacs -join ', ')"
+    Write-Log "New MACs: $($NewMacs -join ', ')"
+
+    $TotalMacs = [math]::Max($PreviousMacAddresses.Count, $CurrentMacAddresses.Count)
+    if ($TotalMacs -eq 0) {
+        Write-Log "No MAC addresses to compare."
+        return
+    }
+
+    $ChangedPercentage = (($RemovedMacs.Count + $NewMacs.Count) / $TotalMacs) * 100
+    Write-Log "Changed percentage: $ChangedPercentage%"
+
+    if ($ChangedPercentage -ge $ThresholdPercentage) {
+        Write-Log "Change detected above threshold!"
+    } else {
+        Write-Log "Change percentage below threshold. No action taken."
+    }
+
+    $CurrentMacAddresses | Out-File $MacAddressFile
+    Write-Log "Updated MAC addresses saved."
 }
 
-$CurrentMacAddresses | Out-File $MacAddressFile
-Write-Log "Updated MAC addresses saved."
-Write-Log "Script execution completed."
+# Beheer van logbestand
+Manage-LogFile
+
+# Repeterende scans uitvoeren
+for ($i = 1; $i -le $MaxScans; $i++) {
+    Write-Log "Starting scan iteration $i of $MaxScans."
+    PerformScan
+    if ($i -lt $MaxScans) {
+        Write-Log "Waiting for $ScanIntervalSeconds seconds before the next scan."
+        Start-Sleep -Seconds $ScanIntervalSeconds
+    }
+}
+Write-Log "Completed all scan iterations."
