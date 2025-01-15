@@ -1,3 +1,6 @@
+I Did this one with ChatGPT
+----------------
+
 Uitleg
 Netwerk scannen: Het script gebruikt arp -a om de MAC-adressen op te halen.
 Opslaan en vergelijken: MAC-adressen worden opgeslagen in een bestand en vergeleken met de nieuwe scan.
@@ -89,3 +92,25 @@ Copy code
 Let op
 Het script maakt gebruik van de arp-tool om MAC-adressen op te halen. Het is belangrijk dat de IP-adressen in het bereik eerder zijn gepingd om ARP-tabelvermeldingen te genereren.
 Zorg ervoor dat de gebruiker voldoende rechten heeft voor netwerkbewerkingen.
+-------------------
+Nieuwe Parameters:
+$ScanIntervalSeconds: Tijd tussen scans in seconden.
+$MaxScans: Maximum aantal scans dat het script uitvoert.
+Repeterende Scans:
+Het script voert meerdere scans uit in een lus, met een wachttijd van $ScanIntervalSeconds tussen elke scan.
+Logging per Iteratie:
+Elke scan wordt gelogd, inclusief het huidige scan-nummer en totale scans.
+Voorbeeldgebruik
+Standaardinstellingen:
+
+powershell
+Copy code
+.\DetectMacChanges.ps1
+Met aangepaste parameters:
+
+powershell
+Copy code
+.\DetectMacChanges.ps1 -IpRange "192.168.0.0/24" -ThresholdPercentage 20 -ScanIntervalSeconds 120 -MaxScans 5
+Let op
+Als $MaxScans is ingesteld op 1, wordt het script slechts één keer uitgevoerd.
+Het interval is belangrijk om te zorgen dat het netwerk voldoende tijd heeft om wijzigingen te detecteren.
