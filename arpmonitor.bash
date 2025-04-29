@@ -5,7 +5,7 @@
 ## pkg install arp-scan
 ## pkg install ipcalc
 
-while getopts i:e:c:u:m:l:v:d:p:f:t:g:o:h:r:s:x:n: flag
+while getopts i:e:c:u:m:l:v:d:p:f:t:g:o:h:r:s:x:n:a: flag
 do
     case "${flag}" in
         i) initialarp=${OPTARG};;
@@ -26,6 +26,7 @@ do
         s) ipsubnet=${OPTARG};;
         x) logmaxsize=${OPTARG};;
         n) numberinstances=${OPTARG};;
+        a) maxagelog=${OPTARG};;
     esac
 done
 
@@ -84,6 +85,70 @@ breken="|"
 ## Please take the standard divider into a string
 #
 divider="-----------------------------------------------------------"
+
+## Start with this function to compress all old log files
+#
+function CompressLogs()
+  {
+     if (( DebugLevel > 4 )); then
+         echo "CompressLogs Function called! Compress Old Log Files"
+         echo $1
+         echo $2
+         echo $3
+         echo $4
+     fi
+
+    ## Prepare the files that need to be TARred  (without the Leaf, only the branches/directorys)
+    #
+    splitstring="$1"
+
+    ## Set forward slash as delimiter, to split the path into seperate parts
+    #
+    IFS='/' read -a splitarray <<< "$splitstring"
+
+    ## Find out what the leaf (file) is that represents the log file
+    ## By constantly filling a string with a part of the string
+    ## But not adding the part of file names into a string
+    #
+    for branch in "${splitarray[@]}"; do
+        fileleaf="$branch"
+        if (( DebugLevel > 3 )); then
+            echo "Finding out Leaf file name, processing: $branch" >> "${arpmonitorlog}"
+        fi
+     done
+     if (( DebugLevel > 2 )); then
+         echo "Found Leaf File: $fileleaf" >> "${arpmonitorlog}"
+     fi
+
+     ## Print the split string using the loop
+     #
+     consume="/"
+     for branch in "${splitarray[@]}"; do
+         if [[ $branch == *${fileleaf}* ]]; then
+             if (( DebugLevel > 2 )); then
+                 echo "Found file: $fileleaf in path: $arpmonitorlog (Do not process the string)" >> "${arpmonitorlog}"
+             fi
+         else
+             if (( DebugLevel > 3 )); then
+                 echo "Adding $branch to ConsumeString: $consume" >> "${arpmonitorlog}"
+             fi
+             consume+="$branch"
+             consume+="/"
+         fi
+     done
+
+     # Directory containing log files
+     LOG_DIR=$consume
+
+     # Compress log files older than 7 days
+     find "$LOG_DIR" -type f -name "*.log" -mtime +7 -exec gzip {} \;
+
+     # Delete the original .log files (gzip does this automatically, so this is redundant unless you use another compression method)
+     # Optional: if you used a different compression method, uncomment the next line
+     find "$LOG_DIR" -type f -name "*.log.gz" -mtime +"$maxagelog" -delete
+     find "$LOG_DIR" -type f -name "*.log.tar" -mtime +"$maxagelog" -delete
+     find "$LOG_DIR" -type f -name "*.tar" -mtime +"$maxagelog" -delete
+  }
 
 ## Function to write log files
 #
@@ -216,9 +281,9 @@ function WriteLog()
                    echo "Finding out Leaf file name, processing: $branch" >> "${arpmonitorlog}"
                 fi
               done
-               if (( DebugLevel > 2 )); then
+              if (( DebugLevel > 2 )); then
                  echo "Found Leaf File: $fileleaf" >> "${arpmonitorlog}"
-               fi
+              fi
 
               ## Print the split string using the loop
               #
@@ -515,6 +580,28 @@ elif (( Interval < 100 )); then
   parameterwarning+=$whatmsg
   parameterwarning+=$breken
   Interval=300
+  if (( DebugLevel > 0 )); then
+    WriteLog 1 "$whatmsg" 0 Yellow
+  fi
+fi
+
+## At what age do we want to delete the tar files of the logs
+#
+if ! [[ "$maxagelog" =~ ^[0-9]+$ ]]; then
+  whatmsg="[Warning] MaxAgeLog (-a) can only contain numbers. Here you can specify how old the tar files of the logs need to be to be deleted. Assuming default: 14 days"
+  parameterwarning+=$whatmsg
+  parameterwarning+=$breken
+
+  #WriteLog 1 "$whatmsg" 0 Red
+  maxagelog=14
+  if (( DebugLevel > 0 )); then
+    WriteLog 1 "$whatmsg" 0 Yellow
+  fi
+elif (( maxagelog < 4 )); then
+  whatmsg="[Warning]MaxAgeLog (-a) has a minimum of 4 days age before removal, Assuming the minimal value: 4 days."
+  parameterwarning+=$whatmsg
+  parameterwarning+=$breken
+  maxagelog = 4
   if (( DebugLevel > 0 )); then
     WriteLog 1 "$whatmsg" 0 Yellow
   fi
@@ -985,6 +1072,8 @@ if [ "$parametererror" != "" ]; then
   echo "${divider}"
   echo "-n: numberinstances --> Maximum number of instances running of this script under the running user (0 = OFF)"
   echo -e "${kleur[Color_Off]}"
+  echo "${divider}"
+  echo "-a: maxagelog       --> Maximum Age of log, when the age is passed these days, the olf tar files will be deleted"
   exit
 fi
 
@@ -1194,6 +1283,12 @@ else
 fi
 
 if (( DebugLevel > 0 )); then
+  whatmsg="-a: MaxAgeLog       (number) : $maxagelog"
+  WriteLog 1 "$whatmsg" 0 Cyan
+fi
+echo -e "${kleur[Cyan]} -a: MaxAgeLog       ${kleur[Purple]} (number) ${kleur[Cyan]}: $maxagelog"
+
+if (( DebugLevel > 0 )); then
   whatmsg="Start the Arp Monitor routine, first do a initial arp-scan"
   WriteLog 1 "$whatmsg" 0 LightBlue
 fi
@@ -1287,6 +1382,10 @@ do
   count=$((count + 1))
 done
 initialcount=$count
+
+## First clean up old log files
+#
+CompressLogs "$arpmonitorlog"
 
 ## Here is the endless loop with a maximum, here we will check the IP adresses
 ## and Mac adresses of the network and will make a check on the two lists
